@@ -2,105 +2,114 @@
  * @fileoverview Firestore Security Rules for the Karaoke System.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for song queue items,
- * allowing users to manage their own queues. Public read access is granted to
- * the 'songs' collection.
+ * This ruleset enforces a user-ownership model for song queue items,
+ * allowing users to manage their own queues while restricting access to
+ * other users' queues.  Songs are publicly readable but not writable.  User
+ * profiles are private and only accessible to the owning user.
  *
  * Data Structure:
- * - /songs/{songId}: Stores publicly available song metadata.
- * - /users/{userId}: Stores user profile information.
- * - /users/{userId}/songQueueItems/{songQueueItemId}: Stores individual song queue
- *   items, with strict ownership enforced based on the userId in the path.
+ * - /songs/{songId}: Public collection of song metadata.
+ * - /users/{userId}: Collection of user profiles.
+ * - /users/{userId}/songQueueItems/{songQueueItemId}: Subcollection of song queue
+ *   items owned by the user.
  *
  * Key Security Decisions:
  * - Users can only manage their own song queue items.
- * - Public read access to song metadata is permitted.
- * - User listing is implicitly denied as there is no rule allowing it.
+ * - Song data is publicly readable but cannot be created, updated, or deleted
+ *   via the client.
+ * - User profiles are private and only accessible/modifiable by the owning user.
+ * - Listing of song queue items is restricted to the owning user.
  *
  * Denormalization for Authorization:
- * The 'songQueueItems' subcollection uses path-based ownership, where the
- * {userId} in the path directly corresponds to the owner of the song queue
- * item. This eliminates the need for additional reads to verify ownership.
+ *  - The `songQueueItems` subcollection uses path-based ownership (`/users/{userId}/songQueueItems/{songQueueItemId}`).
+ *    This avoids the need for `get()` calls to verify ownership, as the `userId`
+ *    is directly available from the path.
+ *
  * Structural Segregation:
- * Public 'songs' are separated from private 'songQueueItems' to allow for
- * public read access to song metadata while maintaining strict ownership
- * controls over user-specific data.
+ * - Song queue items are stored in a user-specific subcollection, ensuring
+ *   that users can only access their own queue items.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows public read access to song metadata. Only the owner can create, update, or delete.
+     * @description Allows public read access to song metadata.  No write access is allowed.
      * @path /songs/{songId}
-     * @allow (get, list)
-     * @allow (create) Example: Request with request.auth.uid and request.resource.data.authorId matching the user ID.
-     * @allow (update, delete) Example: Request made by the user whose ID matches resource.data.authorId.
-     * @deny (create) Example: Request with request.resource.data.authorId not matching request.auth.uid.
-     * @deny (update, delete) Example: Request made by a user whose ID does not match resource.data.authorId.
-     * @principle Public read, owner-only writes.
+     * @allow (get, list): if true
+     * @deny (create, update, delete): Always.  Songs are managed via the backend.
+     * @principle Public read, no client writes.
      */
     match /songs/{songId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Manages user profile information. Allows a user to create their own profile.
+     * @description Allows users to read, update, and delete their own user profiles.
      * @path /users/{userId}
-     * @allow (create) Example: Request from user 'testUser' to create /users/testUser document.
-     * @deny (create) Example: Request from user 'testUser' to create /users/anotherUser document.
-     * @allow (get, list, update, delete) Example: Request from user 'testUser' to get, list, update or delete /users/testUser document.
-     * @deny (get, list, update, delete) Example: Request from user 'testUser' to get, list, update or delete /users/anotherUser document.
-     * @principle Enforces document ownership for user profiles.
+     * @allow (get, update, delete): if isOwner(userId)
+     * @allow (create): if isSelfCreation(userId)
+     * @deny (list): Always.  User listing is not permitted.
+     * @principle Enforces user-ownership for profiles.
      */
     match /users/{userId} {
-      allow get, list: if false;
-      allow create: if isOwner(userId);
-      allow update, delete: if isExistingOwner(userId);
+      allow get, update, delete: if isOwner(userId);
+      allow create: if isSelfCreation(userId);
+      allow list: if false;
     }
 
     /**
-     * @description Manages song queue items for each user. Only the owner (user) can manage their own queue items.
+     * @description Allows users to manage their own song queue items.
      * @path /users/{userId}/songQueueItems/{songQueueItemId}
-     * @allow (create) Example: Request from user 'testUser' to create /users/testUser/songQueueItems/item1.
-     * @deny (create) Example: Request from user 'testUser' to create /users/anotherUser/songQueueItems/item1.
-     * @allow (get, list, update, delete) Example: Request from user 'testUser' to get, list, update or delete /users/testUser/songQueueItems/item1.
-     * @deny (get, list, update, delete) Example: Request from user 'testUser' to get, list, update or delete /users/anotherUser/songQueueItems/item1.
-     * @principle Enforces document ownership for song queue items.
+     * @allow (get, list, create, update, delete): if isOwner(userId)
+     * @deny: When the user attempts to access another user's queue items.
+     * @principle Enforces path-based ownership for song queue items.
      */
     match /users/{userId}/songQueueItems/{songQueueItemId} {
       allow get, list: if isOwner(userId);
       allow create: if isOwner(userId);
-      allow update, delete: if isExistingOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
     }
-  }
 
-  // --- Helper functions ---
+    // --- Helper functions ---
 
-  /**
-   * @description Checks if the request is authenticated.
-   * @return {bool} True if the request is authenticated; otherwise, false.
-   */
-  function isSignedIn() {
-    return request.auth != null;
-  }
+    /**
+     * @description Checks if the current user is signed in.
+     * @return {bool} True if the user is signed in, false otherwise.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
 
-  /**
-   * @description Checks if the user ID matches the authenticated user's ID.
-   * @param {string} userId The user ID to compare against the authenticated user's ID.
-   * @return {bool} True if the user ID matches the authenticated user's ID; otherwise, false.
-   */
-  function isOwner(userId) {
-    return isSignedIn() && request.auth.uid == userId;
-  }
+    /**
+     * @description Checks if the current user is the owner of the resource,
+     * based on the provided userId.
+     * @param {string} userId The user ID to compare against the request's auth UID.
+     * @return {bool} True if the user is the owner, false otherwise.
+     * @example isOwner("some_user_id")
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
 
-   /**
-   * @description Checks if the user ID matches the authenticated user's ID and that resource exists.
-   * @param {string} userId The user ID to compare against the authenticated user's ID.
-   * @return {bool} True if the user ID matches the authenticated user's ID and resource exists; otherwise, false.
-   */
-  function isExistingOwner(userId) {
-    return isOwner(userId) && resource != null;
+     /**
+      * @description Checks if the current user is the owner of the resource and that the resource exists.
+      * @param {string} userId The user ID to compare against the request's auth UID.
+      * @return {bool} True if the user is the owner and the resource exists, false otherwise.
+      */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Checks if the current user is attempting to create their own user document.
+     * @param {string} userId The user ID to compare against the request's auth UID.
+     * @return {bool} True if the user is creating their own document, false otherwise.
+     */
+    function isSelfCreation(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+    }
   }
 }

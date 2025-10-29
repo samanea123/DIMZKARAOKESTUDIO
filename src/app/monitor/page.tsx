@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -35,7 +34,7 @@ function MonitorPageContent() {
     if (nowPlaying || isFullscreen) {
         return (
             <div ref={containerRef} className="flex flex-col h-screen w-screen bg-black items-center justify-center text-white">
-                <VideoPlayer />
+                <VideoPlayer isMonitor={true} />
             </div>
         );
     }

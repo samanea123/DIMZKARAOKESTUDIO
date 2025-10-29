@@ -6,11 +6,28 @@ import { Tv2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 
-export default function VideoPlayer() {
+interface VideoPlayerProps {
+  isMonitor?: boolean;
+}
+
+export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
   const { nowPlaying, playNextSong, addToHistory } = useKaraoke();
   const playerRef = useRef<any>(null);
   const { toast } = useToast();
   const videoId = nowPlaying?.youtubeVideoId;
+
+  const handlePlay = () => {
+    if (isMonitor && playerRef.current?.g) { // playerRef.current.g is the iframe
+      const videoElement = playerRef.current.g;
+      if (videoElement.requestFullscreen) {
+        videoElement.requestFullscreen();
+      } else if (videoElement.webkitRequestFullscreen) { /* Safari */
+        videoElement.webkitRequestFullscreen();
+      } else if (videoElement.msRequestFullscreen) { /* IE11 */
+        videoElement.msRequestFullscreen();
+      }
+    }
+  };
 
   useEffect(() => {
     // Fungsi untuk menangani event
@@ -21,6 +38,10 @@ export default function VideoPlayer() {
           addToHistory(nowPlaying);
         }
         playNextSong();
+      }
+      // @ts-ignore - YT.PlayerState.PLAYING adalah 1
+      if (isMonitor && event.data === window.YT.PlayerState.PLAYING) {
+        handlePlay();
       }
     };
 
@@ -58,8 +79,8 @@ export default function VideoPlayer() {
         videoId: videoId,
         playerVars: {
           autoplay: 1,
-          controls: 1,
-          fs: 0,
+          controls: isMonitor ? 0 : 1, // Sembunyikan kontrol di monitor
+          fs: isMonitor ? 0 : 1, // Sembunyikan tombol fullscreen di monitor (sudah otomatis)
           modestbranding: 1,
           rel: 0,
         },
@@ -101,7 +122,7 @@ export default function VideoPlayer() {
       window.onYouTubeIframeAPIReady = null; // Hapus listener global untuk mencegah kebocoran
     };
 
-  }, [videoId, addToHistory, playNextSong, toast, nowPlaying]);
+  }, [videoId, addToHistory, playNextSong, toast, nowPlaying, isMonitor]);
 
 
   return (
@@ -116,5 +137,3 @@ export default function VideoPlayer() {
     </div>
   );
 }
-
-    
