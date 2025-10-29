@@ -20,10 +20,13 @@ export interface YoutubeVideo {
 
 interface KaraokeContextType {
   queue: YoutubeVideo[];
+  history: YoutubeVideo[];
   addSongToQueue: (song: YoutubeVideo) => void;
   removeSongFromQueue: (videoId: string) => void;
   playSongFromQueue: (videoId: string) => void;
   playNextSong: () => void;
+  playPreviousSong: () => void;
+  stopPlayback: () => void;
   nowPlaying?: YoutubeVideo;
 }
 
@@ -31,6 +34,7 @@ const KaraokeContext = createContext<KaraokeContextType | undefined>(undefined);
 
 export function KaraokeProvider({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<YoutubeVideo[]>([]);
+  const [history, setHistory] = useState<YoutubeVideo[]>([]);
   const { toast } = useToast();
   
   const addSongToQueue = (song: YoutubeVideo) => {
@@ -65,6 +69,10 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
 
   const playNextSong = () => {
     setQueue((prevQueue) => {
+      if (prevQueue.length > 0) {
+        const finishedSong = prevQueue[0];
+        setHistory(prevHistory => [finishedSong, ...prevHistory].slice(0, 20)); // Keep last 20 songs
+      }
       if (prevQueue.length <= 1) {
         return [];
       }
@@ -72,10 +80,36 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const playPreviousSong = () => {
+    if (history.length === 0) return;
+
+    const lastPlayed = history[0];
+    setHistory(prev => prev.slice(1));
+    setQueue(prev => [lastPlayed, ...prev]);
+  };
+
+  const stopPlayback = () => {
+    if (queue.length > 0) {
+        const songsToMove = [...queue];
+        setHistory(prev => [...songsToMove, ...prev].slice(0,20));
+    }
+    setQueue([]);
+  };
+
   const nowPlaying = queue[0];
 
   return (
-    <KaraokeContext.Provider value={{ queue, addSongToQueue, removeSongFromQueue, playSongFromQueue, playNextSong, nowPlaying }}>
+    <KaraokeContext.Provider value={{ 
+        queue, 
+        history,
+        addSongToQueue, 
+        removeSongFromQueue, 
+        playSongFromQueue, 
+        playNextSong, 
+        playPreviousSong,
+        stopPlayback,
+        nowPlaying 
+    }}>
       {children}
     </KaraokeContext.Provider>
   );
