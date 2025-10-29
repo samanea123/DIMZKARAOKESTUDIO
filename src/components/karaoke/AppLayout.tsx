@@ -4,7 +4,7 @@
 import {
   HelpCircle,
   Home,
-  ListMusic,
+  Star,
   Settings,
   History as HistoryIcon
 } from "lucide-react";
@@ -50,6 +50,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <SidebarMenuButton tooltip="Riwayat" isActive={activeTab === 'history'} onClick={() => setActiveTab('history')}>
                 <HistoryIcon />
                 <span>Riwayat</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Favorit" isActive={activeTab === 'favorites'} onClick={() => setActiveTab('favorites')}>
+                <Star />
+                <span>Favorit</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>

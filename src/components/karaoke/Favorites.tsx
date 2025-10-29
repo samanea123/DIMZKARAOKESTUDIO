@@ -20,68 +20,25 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useKaraoke } from "@/context/KaraokeContext";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { History as HistoryIcon, Play, Star, Trash2 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { Play, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "../ui/badge";
 
-export default function History() {
-  const { songHistory, playFromHistory, clearHistory, addOrRemoveFavorite, isFavorite } = useKaraoke();
-
-  const formatDateTime = (isoString: string) => {
-    const date = new Date(isoString);
-    return date.toLocaleString("id-ID", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  };
+export default function Favorites() {
+  const { favorites, playFromFavorites, addOrRemoveFavorite, isFavorite } = useKaraoke();
 
   return (
     <Card className="h-full flex flex-col mt-[-2rem] xl:mt-0">
-      <CardHeader className="flex-row items-center justify-between">
+      <CardHeader>
         <div>
           <CardTitle className="font-headline flex items-center gap-2">
-            <HistoryIcon className="text-primary" />
-            Riwayat Lagu
+            <Star className="text-primary" />
+            Lagu Favorit
           </CardTitle>
           <CardDescription>
-            Lagu-lagu yang sudah pernah Anda putar.
+            Lagu-lagu yang telah Anda tandai sebagai favorit.
           </CardDescription>
         </div>
-        {songHistory.length > 0 && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Hapus Riwayat
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Tindakan ini akan menghapus semua riwayat lagu Anda secara permanen.
-                  Data yang sudah dihapus tidak dapat dikembalikan.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Batal</AlertDialogCancel>
-                <AlertDialogAction onClick={clearHistory}>
-                  Ya, Hapus Semua
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
       </CardHeader>
       <CardContent className="flex-1 p-0 min-h-0">
         <ScrollArea className="h-full">
@@ -91,12 +48,12 @@ export default function History() {
                 <TableHead className="w-[80px]"></TableHead>
                 <TableHead>Lagu</TableHead>
                 <TableHead>Artis</TableHead>
-                <TableHead>Terakhir Diputar</TableHead>
+                <TableHead>Mode</TableHead>
                 <TableHead className="w-[150px] text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {songHistory.map((song) => (
+              {favorites.map((song) => (
                 <TableRow key={song.id.videoId} className="group">
                   <TableCell>
                     <Image
@@ -113,7 +70,11 @@ export default function History() {
                   <TableCell className="truncate max-w-[150px]">
                     {song.snippet.channelTitle}
                   </TableCell>
-                  <TableCell>{formatDateTime(song.playedAt)}</TableCell>
+                  <TableCell>
+                    <Badge variant={song.mode === 'karaoke' ? 'default' : 'secondary'} className="uppercase">
+                        {song.mode}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex justify-end gap-1">
                       <Button
@@ -128,7 +89,7 @@ export default function History() {
                         size="icon"
                         variant="ghost"
                         className="hover:text-primary"
-                        onClick={() => playFromHistory(song)}
+                        onClick={() => playFromFavorites(song)}
                       >
                         <Play className="h-4 w-4" />
                       </Button>
@@ -136,13 +97,13 @@ export default function History() {
                   </TableCell>
                 </TableRow>
               ))}
-              {songHistory.length === 0 && (
+              {favorites.length === 0 && (
                 <TableRow>
                   <TableCell
                     colSpan={5}
                     className="text-center text-muted-foreground h-48"
                   >
-                    Riwayat lagu masih kosong.
+                    Anda belum memiliki lagu favorit.
                   </TableCell>
                 </TableRow>
               )}

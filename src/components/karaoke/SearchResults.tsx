@@ -3,19 +3,20 @@
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Play } from "lucide-react";
+import { Play, Star } from "lucide-react";
 import type { YoutubeVideo } from "@/context/KaraokeContext";
 import { ScrollArea } from "../ui/scroll-area";
 import { useKaraoke } from "@/context/KaraokeContext";
+import { cn } from "@/lib/utils";
 
 export default function SearchResults({ videos }: { videos: YoutubeVideo[] }) {
-  const { addSongToQueue } = useKaraoke();
+  const { addSongToQueue, addOrRemoveFavorite, isFavorite, mode } = useKaraoke();
 
   return (
     <ScrollArea className="h-96 w-full">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-1">
         {videos.map((video) => (
-            <Card key={video.id.videoId} className="overflow-hidden group hover:border-primary transition-colors">
+            <Card key={video.id.videoId} className="overflow-hidden group hover:border-primary transition-colors relative">
             <CardContent className="p-0 relative aspect-video">
                 <Image
                 src={video.snippet.thumbnails.high.url}
@@ -38,6 +39,17 @@ export default function SearchResults({ videos }: { videos: YoutubeVideo[] }) {
                     <Play className="fill-primary-foreground" />
                 </Button>
             </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity rounded-full bg-black/30 hover:bg-black/50 text-white hover:text-yellow-400"
+              onClick={(e) => {
+                e.stopPropagation();
+                addOrRemoveFavorite(video, mode);
+              }}
+            >
+              <Star className={cn("h-5 w-5", isFavorite(video.id.videoId) ? "text-yellow-400 fill-yellow-400" : "")} />
+            </Button>
             </Card>
         ))}
         </div>

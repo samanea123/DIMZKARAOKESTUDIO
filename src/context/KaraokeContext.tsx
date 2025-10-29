@@ -5,7 +5,7 @@ import { createContext, useContext, useState, type ReactNode, useEffect } from "
 import { useToast } from "@/hooks/use-toast";
 
 export type FilterMode = "karaoke" | "non-karaoke";
-export type ActiveTab = "home" | "history" | "settings";
+export type ActiveTab = "home" | "history" | "settings" | "favorites";
 
 export interface YoutubeVideo {
   id: {
@@ -27,10 +27,16 @@ export interface HistoryEntry extends YoutubeVideo {
   mode: FilterMode;
 }
 
+export interface FavoriteEntry extends YoutubeVideo {
+  favoritedAt: string;
+  mode: FilterMode;
+}
+
 
 interface KaraokeContextType {
   queue: YoutubeVideo[];
   songHistory: HistoryEntry[];
+  favorites: FavoriteEntry[];
   mode: FilterMode;
   setMode: (mode: FilterMode) => void;
   activeTab: ActiveTab;
@@ -45,6 +51,9 @@ interface KaraokeContextType {
   addToHistory: (song: YoutubeVideo, mode: FilterMode) => void;
   playFromHistory: (song: HistoryEntry) => void;
   clearHistory: () => void;
+  addOrRemoveFavorite: (song: YoutubeVideo, mode: FilterMode) => void;
+  isFavorite: (videoId: string) => boolean;
+  playFromFavorites: (song: FavoriteEntry) => void;
 }
 
 const KaraokeContext = createContext<KaraokeContextType | undefined>(undefined);
@@ -52,6 +61,7 @@ const KaraokeContext = createContext<KaraokeContextType | undefined>(undefined);
 export function KaraokeProvider({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<YoutubeVideo[]>([]);
   const [songHistory, setSongHistory] = useState<HistoryEntry[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteEntry[]>([]);
   const [mode, setMode] = useState<FilterMode>("karaoke");
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const { toast } = useToast();
@@ -62,9 +72,14 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
         if (savedHistory) {
             setSongHistory(JSON.parse(savedHistory));
         }
+        const savedFavorites = localStorage.getItem("dimz-karaoke-favorites");
+        if (savedFavorites) {
+            setFavorites(JSON.parse(savedFavorites));
+        }
     } catch (error) {
-        console.error("Could not load history from localStorage", error);
+        console.error("Could not load data from localStorage", error);
         setSongHistory([]);
+        setFavorites([]);
     }
   }, []);
 
@@ -74,6 +89,15 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("dimz-karaoke-history", JSON.stringify(newHistory));
     } catch (error) {
       console.error("Could not save history to localStorage", error);
+    }
+  };
+  
+  const updateFavorites = (newFavorites: FavoriteEntry[]) => {
+    setFavorites(newFavorites);
+    try {
+      localStorage.setItem("dimz-karaoke-favorites", JSON.stringify(newFavorites));
+    } catch (error) {
+      console.error("Could not save favorites to localStorage", error);
     }
   };
 
@@ -156,12 +180,47 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
       })
   };
 
+  const isFavorite = (videoId: string) => {
+    return favorites.some(fav => fav.id.videoId === videoId);
+  }
+
+  const addOrRemoveFavorite = (song: YoutubeVideo, mode: FilterMode) => {
+    if (isFavorite(song.id.videoId)) {
+      // Remove from favorites
+      const newFavorites = favorites.filter(fav => fav.id.videoId !== song.id.videoId);
+      updateFavorites(newFavorites);
+      toast({
+        title: "Dihapus dari Favorit",
+        description: `${song.snippet.title} telah dihapus dari daftar favorit.`,
+      });
+    } else {
+      // Add to favorites
+      const newEntry: FavoriteEntry = {
+        ...song,
+        favoritedAt: new Date().toISOString(),
+        mode: mode,
+      };
+      const newFavorites = [newEntry, ...favorites];
+      updateFavorites(newFavorites);
+      toast({
+        title: "Ditambahkan ke Favorit",
+        description: `${song.snippet.title} telah ditambahkan ke daftar favorit.`,
+      });
+    }
+  };
+
+  const playFromFavorites = (song: FavoriteEntry) => {
+    addSongToQueue(song);
+    playSongFromQueue(song.id.videoId);
+  };
+
   const nowPlaying = queue[0];
 
   return (
     <KaraokeContext.Provider value={{ 
         queue, 
         songHistory,
+        favorites,
         mode,
         setMode,
         activeTab,
@@ -176,6 +235,9 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
         addToHistory,
         playFromHistory,
         clearHistory,
+        addOrRemoveFavorite,
+        isFavorite,
+        playFromFavorites
     }}>
       {children}
     </KaraokeContext.Provider>

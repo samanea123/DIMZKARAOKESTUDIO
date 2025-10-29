@@ -2,6 +2,7 @@
 "use client";
 
 import AppLayout from "@/components/karaoke/AppLayout";
+import Favorites from "@/components/karaoke/Favorites";
 import Header from "@/components/karaoke/Header";
 import History from "@/components/karaoke/History";
 import MiniMonitor from "@/components/karaoke/MiniMonitor";
@@ -26,6 +27,9 @@ function KaraokeContent() {
         )}
 
         {activeTab === 'history' && <History />}
+        
+        {activeTab === 'favorites' && <Favorites />}
+
 
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-8 flex-1 min-h-0">
           <div className="xl:col-span-3 h-full min-h-[300px] xl:min-h-0">
