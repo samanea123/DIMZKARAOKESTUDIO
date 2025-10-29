@@ -243,9 +243,11 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     const songToPlay = queue.find(s => s.id === docId);
     if (!songToPlay) return;
 
-    // Determine the new order. If a song is playing, make it just before that.
-    // If no song is playing, make it the first (e.g., order 0 or smaller).
-    const newOrder = nowPlaying ? nowPlaying.order - 1 : Date.now() * -1;
+    // Get the lowest order value in the queue. If queue is empty, default to 0.
+    const minOrder = queue.length > 0 ? queue[0].order : 0;
+    
+    // Set the new order to be slightly less than the current lowest, ensuring it becomes the first.
+    const newOrder = minOrder - 1;
     
     const docRef = doc(db, "users", TEMP_USER_ID, "songQueueItems", docId);
     updateDocumentNonBlocking(docRef, { order: newOrder });
@@ -380,5 +382,3 @@ export function useKaraoke() {
   }
   return context;
 }
-
-    
