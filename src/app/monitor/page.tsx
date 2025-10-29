@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import VideoPlayer from "@/components/karaoke/VideoPlayer";
 import { KaraokeProvider, useKaraoke } from "@/context/KaraokeContext";
 import { Tv2 } from "lucide-react";

@@ -109,8 +109,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     } else {
         const width = window.screen.width;
         const height = window.screen.height;
-        // Membuka jendela sebagai popup tanpa chrome UI browser
-        const newWindow = window.open('/monitor', 'karaoke-monitor', `width=${width},height=${height},popup=true`);
+        const newWindow = window.open('/monitor', 'karaoke-monitor', `width=${width},height=${height}`);
         setMonitorWindow(newWindow);
     }
   };
