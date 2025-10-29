@@ -155,8 +155,11 @@ export default function MiniMonitor() {
     };
 
     // Remove old listener before adding a new one
-    mediaSession.removeUpdateListener(updateListener);
+    if (mediaSessionRef.current?._updateListener) {
+      mediaSession.removeUpdateListener(mediaSessionRef.current._updateListener);
+    }
     mediaSession.addUpdateListener(updateListener);
+    mediaSessionRef.current._updateListener = updateListener;
   };
 
 
@@ -367,5 +370,3 @@ export default function MiniMonitor() {
     </Card>
   );
 }
-
-    

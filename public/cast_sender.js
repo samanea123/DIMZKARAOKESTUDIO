@@ -1,13 +1,12 @@
-window.__onGCastApiAvailable = function(isAvailable) {
+window['__onGCastApiAvailable'] = function(isAvailable) {
   if (isAvailable) {
     try {
-      const castContext = cast.framework.CastContext.getInstance();
-      castContext.setOptions({
+      cast.framework.CastContext.getInstance().setOptions({
         receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-        autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
+        autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
       });
-    } catch (err) {
-      console.error('Failed to initialize CastContext:', err);
+    } catch(err) {
+      console.error('Failed to initialize cast context:', err);
     }
   }
 };
