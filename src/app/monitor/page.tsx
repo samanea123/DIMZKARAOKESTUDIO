@@ -13,14 +13,14 @@ function MonitorPageContent() {
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     useEffect(() => {
-        // Set initial state
-        setIsFullscreen(!!document.fullscreenElement);
-
         const handleFullscreenChange = () => {
             setIsFullscreen(!!document.fullscreenElement);
         };
 
         document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+        // Set initial state
+        setIsFullscreen(!!document.fullscreenElement);
 
         return () => {
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
@@ -34,8 +34,9 @@ function MonitorPageContent() {
             });
         }
     };
-
-    // Kondisi 1: Tampilkan VideoPlayer jika sudah fullscreen ATAU ada lagu yang sedang diputar.
+    
+    // If it's already fullscreen OR a song is playing, show the player.
+    // This handles cases where the user enters fullscreen first, or a song starts playing.
     if (isFullscreen || nowPlaying) {
         return (
             <div ref={containerRef} className="flex flex-col h-screen w-screen bg-black items-center justify-center text-white">
@@ -44,7 +45,7 @@ function MonitorPageContent() {
         );
     }
     
-    // Kondisi 2: Tampilan awal jika belum fullscreen dan tidak ada lagu yang diputar.
+    // Initial state: not fullscreen and no song is playing. Show the button.
     return (
         <div ref={containerRef} className="flex flex-col h-screen w-screen bg-black items-center justify-center text-white">
              <div className="text-center text-muted-foreground p-8">
