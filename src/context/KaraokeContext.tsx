@@ -3,9 +3,11 @@
 
 import { createContext, useContext, useState, type ReactNode, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy, doc, writeBatch, serverTimestamp, addDoc } from "firebase/firestore";
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { useFirebase, useMemoFirebase } from "@/firebase";
+import { collection, query, orderBy, doc, writeBatch, serverTimestamp } from "firebase/firestore";
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import type { UseCollectionResult } from "@/firebase/firestore/use-collection";
+import { useCollection } from "@/firebase";
 
 export type FilterMode = "karaoke" | "original";
 export type ActiveTab = "home" | "history" | "settings" | "favorites";
@@ -79,7 +81,7 @@ const KaraokeContext = createContext<KaraokeContextType | undefined>(undefined);
 const TEMP_USER_ID = "shared-queue-user";
 
 export function KaraokeProvider({ children }: { children: ReactNode }) {
-  const { firestore } = useFirebase();
+  const { firestore, user } = useFirebase();
   const db = firestore;
 
   const [songHistory, setSongHistory] = useState<HistoryEntry[]>([]);
@@ -90,14 +92,15 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
 
   // --- FIREBASE QUEUE SYNC ---
   const queueQuery = useMemoFirebase(() => {
-    if (!db) return null;
+    // Wait until we have a user ID before creating the query.
+    if (!db || !user) return null;
     return query(
-        collection(db, "users", TEMP_USER_ID, "songQueueItems"), 
+        collection(db, "users", user.uid, "songQueueItems"), 
         orderBy("order", "asc")
     );
-  }, [db]);
+  }, [db, user]);
   
-  const { data: queue, isLoading: isQueueLoading } = useCollection<QueueEntry>(queueQuery);
+  const { data: queue, isLoading: isQueueLoading }: UseCollectionResult<QueueEntry> = useCollection<QueueEntry>(queueQuery);
   // --- END FIREBASE QUEUE SYNC ---
   
   useEffect(() => {
@@ -158,7 +161,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
 
   const addSongToQueue = async (song: YoutubeVideo, mode: FilterMode) => {
-    if (!db || !queue) return;
+    if (!db || !queue || !user) return;
     if (queue.some(s => s.youtubeVideoId === song.id.videoId)) {
       toast({
         variant: "destructive",
@@ -181,7 +184,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
         addedAt: serverTimestamp(),
     };
     
-    const collectionRef = collection(db, "users", TEMP_USER_ID, "songQueueItems");
+    const collectionRef = collection(db, "users", user.uid, "songQueueItems");
     addDocumentNonBlocking(collectionRef, newEntry);
 
     toast({
@@ -191,12 +194,12 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
 
   const addSongToPlayNext = async (song: QueueEntry) => {
-    if (!db || !queue) return;
+    if (!db || !queue || !user) return;
 
     // The song to be played next should have an order between nowPlaying (if it exists) and the next song
     const newOrder = (nowPlaying?.order || 0) + 0.5;
 
-    const docRef = doc(db, "users", TEMP_USER_ID, "songQueueItems", song.id);
+    const docRef = doc(db, "users", user.uid, "songQueueItems", song.id);
     updateDocumentNonBlocking(docRef, { order: newOrder });
 
     toast({
@@ -206,7 +209,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
 
   const playNextFromAnywhere = async (song: YoutubeVideo, mode: FilterMode) => {
-      if (!db || !queue) return;
+      if (!db || !queue || !user) return;
       const songInQueue = queue.find(s => s.youtubeVideoId === song.id.videoId);
       if (songInQueue) {
           await addSongToPlayNext(songInQueue);
@@ -221,7 +224,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
               order: newOrder,
               addedAt: serverTimestamp(),
           };
-          const collectionRef = collection(db, "users", TEMP_USER_ID, "songQueueItems");
+          const collectionRef = collection(db, "users", user.uid, "songQueueItems");
           addDocumentNonBlocking(collectionRef, newEntry);
 
           toast({
@@ -232,24 +235,28 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
 
   const removeSongFromQueue = (docId: string) => {
-    if (!db) return;
-    const docRef = doc(db, "users", TEMP_USER_ID, "songQueueItems", docId);
+    if (!db || !user) return;
+    const docRef = doc(db, "users", user.uid, "songQueueItems", docId);
     deleteDocumentNonBlocking(docRef);
   };
 
   const playSongFromQueue = (docId: string) => {
-    if (!db || !queue) return;
+    if (!db || !queue || !user) return;
     
     const songToPlay = queue.find(s => s.id === docId);
     if (!songToPlay) return;
 
-    // Get the lowest order value in the queue. If queue is empty, default to 0.
-    const minOrder = queue.length > 0 ? queue[0].order : 0;
+    // If the song is already playing, do nothing (or we could restart it, but this is simpler)
+    if (nowPlaying?.id === docId) {
+        // Optional: logic to restart video could go here by communicating with VideoPlayer state
+        return;
+    }
+
+    // Get the order of the current first song. If no song is playing, use 0.
+    // Subtract 1 to ensure the selected song becomes the new first song.
+    const newOrder = (nowPlaying?.order ?? 1) - 1;
     
-    // Set the new order to be slightly less than the current lowest, ensuring it becomes the first.
-    const newOrder = minOrder - 1;
-    
-    const docRef = doc(db, "users", TEMP_USER_ID, "songQueueItems", docId);
+    const docRef = doc(db, "users", user.uid, "songQueueItems", docId);
     updateDocumentNonBlocking(docRef, { order: newOrder });
   };
 
@@ -271,10 +278,10 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
       addToHistory(nowPlaying);
     }
     // Delete all songs in the queue
-    if (db && queue) {
+    if (db && queue && user) {
       const batch = writeBatch(db);
       queue.forEach(song => {
-        const docRef = doc(db, "users", TEMP_USER_ID, "songQueueItems", song.id);
+        const docRef = doc(db, "users", user.uid, "songQueueItems", song.id);
         batch.delete(docRef);
       });
       batch.commit();
