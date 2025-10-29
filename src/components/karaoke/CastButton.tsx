@@ -19,62 +19,10 @@ export default function CastButton() {
   const { toast } = useToast();
   const castSessionRef = useRef<any>(null);
   const [isCastApiAvailable, setIsCastApiAvailable] = useState(false);
+  const [session, setSession] = useState<any>(null);
 
-  useEffect(() => {
-    const initializeCastApi = () => {
-      if (window.cast && window.cast.framework) {
-        try {
-          const context = window.cast.framework.CastContext.getInstance();
-          context.setOptions({
-            receiverApplicationId: window.chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-            autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
-          });
-
-          const handleSessionStateChange = (event: any) => {
-            const session = context.getCurrentSession();
-            castSessionRef.current = session;
-            if (event.sessionState === 'SESSION_STARTED' && session && nowPlaying) {
-              loadMedia(nowPlaying.id.videoId);
-            } else if (event.sessionState === 'SESSION_ENDED') {
-              castSessionRef.current = null;
-            }
-          };
-
-          context.addEventListener(
-            window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
-            handleSessionStateChange
-          );
-          
-          // Set initial session if already connected
-          castSessionRef.current = context.getCurrentSession();
-          
-          setIsCastApiAvailable(true);
-
-        } catch (error) {
-          console.error('Failed to initialize Cast framework:', error);
-          toast({
-            variant: 'destructive',
-            title: 'Cast API Gagal',
-            description: 'Tidak dapat menginisialisasi Google Cast.',
-          });
-        }
-      }
-    };
-    
-    if (window.chrome && window.chrome.cast && window.chrome.cast.isAvailable) {
-        initializeCastApi();
-    } else {
-        window['__onGCastApiAvailable'] = (isAvailable) => {
-            if (isAvailable) {
-                initializeCastApi();
-            }
-        };
-    }
-  }, [toast]);
-
-  const loadMedia = (videoId: string) => {
-    const session = castSessionRef.current;
-    if (!session || !nowPlaying) return;
+  const loadMedia = (videoId: string, activeSession: any) => {
+    if (!activeSession || !nowPlaying) return;
 
     const mediaInfo = new window.chrome.cast.media.MediaInfo(`https://www.youtube.com/watch?v=${videoId}`, 'video/youtube');
     mediaInfo.metadata = new window.chrome.cast.media.GenericMediaMetadata();
@@ -84,7 +32,7 @@ export default function CastButton() {
     
     const request = new window.chrome.cast.media.LoadRequest(mediaInfo);
     
-    session.loadMedia(request).then(
+    activeSession.loadMedia(request).then(
       () => {
         // Media is loading.
       },
@@ -100,19 +48,74 @@ export default function CastButton() {
   };
   
   useEffect(() => {
-    if (nowPlaying && castSessionRef.current) {
-        loadMedia(nowPlaying.id.videoId);
+    const initializeCastApi = () => {
+      if (window.cast && window.cast.framework) {
+        try {
+          const context = window.cast.framework.CastContext.getInstance();
+          context.setOptions({
+            receiverApplicationId: window.chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+            autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
+          });
+
+          const handleSessionStateChange = (event: any) => {
+            const currentSession = context.getCurrentSession();
+            setSession(currentSession); // Update session state
+            castSessionRef.current = currentSession;
+
+            if (event.sessionState === 'SESSION_STARTED' && currentSession && nowPlaying) {
+              loadMedia(nowPlaying.id.videoId, currentSession);
+            } else if (event.sessionState === 'SESSION_ENDED') {
+              castSessionRef.current = null;
+            }
+          };
+
+          context.addEventListener(
+            window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+            handleSessionStateChange
+          );
+          
+          // Set initial session if already connected
+          const currentSession = context.getCurrentSession();
+          setSession(currentSession);
+          castSessionRef.current = currentSession;
+          
+          setIsCastApiAvailable(true);
+
+        } catch (error) {
+          console.error('Failed to initialize Cast framework:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Cast API Gagal',
+            description: 'Tidak dapat menginisialisasi Google Cast.',
+          });
+        }
+      }
+    };
+    
+    // The onGCastApiAvailable callback is required to initialize the Cast API
+    window['__onGCastApiAvailable'] = (isAvailable) => {
+        if (isAvailable) {
+            initializeCastApi();
+        }
+    };
+  }, [toast]); // Removed nowPlaying from dependencies to avoid re-registering listeners
+
+  useEffect(() => {
+    // This effect runs only when nowPlaying changes or session changes
+    if (nowPlaying && session) {
+        loadMedia(nowPlaying.id.videoId, session);
     }
-  }, [nowPlaying?.id.videoId]);
+  }, [nowPlaying?.id.videoId, session]);
 
 
   if (!isCastApiAvailable) {
     return <Cast className="text-muted-foreground/50" />;
   }
 
+  // The google-cast-launcher element is the official button from the SDK
   return (
     <google-cast-launcher style={{
-      display: 'block', 
+      display: 'inline-block', 
       width: '24px', 
       height: '24px', 
       cursor: 'pointer', 
