@@ -7,10 +7,10 @@ import { ScrollArea } from "../ui/scroll-area";
 import { useKaraoke } from "@/context/KaraokeContext";
 import Image from "next/image";
 import { Button } from "../ui/button";
-import { SkipForward, Trash2 } from "lucide-react";
+import { Play, SkipForward, Trash2 } from "lucide-react";
 
 export default function SongQueue() {
-  const { queue, playSongFromQueue, playNextSong, removeSongFromQueue } = useKaraoke();
+  const { queue, playSongFromQueue, playNextSong, removeSongFromQueue, addSongToPlayNext } = useKaraoke();
 
   const handleRemoveSong = (e: React.MouseEvent, videoId: string, isNowPlaying: boolean) => {
     e.stopPropagation();
@@ -40,15 +40,14 @@ export default function SongQueue() {
                 <TableHead className="w-[80px]"></TableHead>
                 <TableHead>Lagu</TableHead>
                 <TableHead>Artis</TableHead>
-                <TableHead className="w-[50px] text-right"></TableHead>
+                <TableHead className="w-[120px] text-right"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {queue.map((song, index) => (
                 <TableRow 
                   key={`${song.id.videoId}-${index}`} 
-                  className={index === 0 ? "bg-primary/10 group" : "cursor-pointer hover:bg-primary/5 group"}
-                  onClick={() => index > 0 && playSongFromQueue(song.id.videoId)}
+                  className={index === 0 ? "bg-primary/10 group" : "group"}
                 >
                   <TableCell>
                     <Image
@@ -62,14 +61,39 @@ export default function SongQueue() {
                   <TableCell className="font-medium truncate max-w-[150px]">{song.snippet.title}</TableCell>
                   <TableCell className="truncate max-w-[100px]">{song.snippet.channelTitle}</TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => handleRemoveSong(e, song.id.videoId, index === 0)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex justify-end items-center gap-1">
+                      {index > 0 && (
+                        <>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 hover:text-primary"
+                            title="Putar Sekarang"
+                            onClick={() => playSongFromQueue(song.id.videoId)}
+                          >
+                            <Play className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            title="Antrikan Berikutnya"
+                            onClick={() => addSongToPlayNext(song)}
+                          >
+                            <SkipForward className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
+                        title="Hapus dari antrian"
+                        onClick={(e) => handleRemoveSong(e, song.id.videoId, index === 0)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

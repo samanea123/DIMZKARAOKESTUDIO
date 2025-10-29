@@ -44,6 +44,7 @@ interface KaraokeContextType {
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
   addSongToQueue: (song: YoutubeVideo, mode: FilterMode) => void;
+  addSongToPlayNext: (song: QueueEntry) => void;
   removeSongFromQueue: (videoId: string) => void;
   playSongFromQueue: (videoId: string) => void;
   playNextSong: () => void;
@@ -133,6 +134,20 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     })
   };
 
+  const addSongToPlayNext = (song: QueueEntry) => {
+    const newQueue = queue.filter(s => s.id.videoId !== song.id.videoId);
+    if (newQueue.length === 0) {
+      updateQueue([song]);
+    } else {
+      newQueue.splice(1, 0, song);
+      updateQueue(newQueue);
+    }
+     toast({
+      title: "Antrian Diperbarui",
+      description: `${song.snippet.title} akan diputar berikutnya.`,
+    })
+  }
+
   const removeSongFromQueue = (videoId: string) => {
     updateQueue(queue.filter((song) => song.id.videoId !== videoId));
   };
@@ -141,10 +156,9 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     const songToPlay = queue.find(song => song.id.videoId === videoId);
     if (!songToPlay) return;
 
-    // Add currently playing song to history if there is one
     const currentSong = queue[0];
     if (currentSong && currentSong.id.videoId !== songToPlay.id.videoId) {
-      addToHistory(currentSong);
+      // Don't add to history here, it will be added when the next song truly starts
     }
     
     const otherSongs = queue.filter(song => song.id.videoId !== videoId);
@@ -152,6 +166,9 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
 
   const playNextSong = () => {
+    if(queue[0]) {
+      addToHistory(queue[0]);
+    }
     if (queue.length <= 1) {
       updateQueue([]);
     } else {
@@ -254,6 +271,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
         activeTab,
         setActiveTab,
         addSongToQueue, 
+        addSongToPlayNext,
         removeSongFromQueue, 
         playSongFromQueue, 
         playNextSong, 
