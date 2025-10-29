@@ -1,4 +1,3 @@
-
 "use client";
 
 import { createContext, useContext, useState, type ReactNode, useEffect, useMemo } from "react";
@@ -80,12 +79,12 @@ const TEMP_USER_ID = "shared-queue-user";
 
 export function KaraokeProvider({ children }: { children: ReactNode }) {
   const { firestore } = useFirebase();
-  const db = firestore;
   const [songHistory, setSongHistory] = useState<HistoryEntry[]>([]);
   const [favorites, setFavorites] = useState<FavoriteEntry[]>([]);
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [monitorWindow, setMonitorWindow] = useState<Window | null>(null);
   const { toast } = useToast();
+  const db = firestore;
 
   // --- FIREBASE QUEUE SYNC ---
   const queueQuery = useMemoFirebase(() => {
@@ -96,7 +95,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     );
   }, [db]);
   
-  const { data: queue, isLoading: isQueueLoading } = useCollection<QueueEntry>(queueQuery);
+  const { data: queue = [], isLoading: isQueueLoading } = useCollection<QueueEntry>(queueQuery);
   // --- END FIREBASE QUEUE SYNC ---
   
   useEffect(() => {
@@ -116,11 +115,12 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const nowPlaying = queue?.[0];
+  const nowPlaying = queue && queue.length > 0 ? queue[0] : undefined;
 
   useEffect(() => {
     if (nowPlaying && (!monitorWindow || monitorWindow.closed)) {
-      openMonitor();
+      // Temporarily disable auto-opening monitor to avoid pop-up blockers
+      // openMonitor();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nowPlaying]);
@@ -156,7 +156,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
 
   const addSongToQueue = async (song: YoutubeVideo, mode: FilterMode) => {
-    if (!db || !queue) return;
+    if (!db) return;
     if (queue.some(s => s.youtubeVideoId === song.id.videoId)) {
       toast({
         variant: "destructive",
@@ -236,7 +236,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
 
   const playSongFromQueue = (docId: string) => {
-    if (!db || !queue) return;
+    if (!db || !nowPlaying) return;
     const songToPlay = queue.find(s => s.id === docId);
     if (!songToPlay) return;
 
@@ -340,7 +340,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
 
   return (
     <KaraokeContext.Provider value={{ 
-        queue: queue || [], 
+        queue,
         isQueueLoading,
         songHistory,
         favorites,
@@ -375,5 +375,3 @@ export function useKaraoke() {
   }
   return context;
 }
-
-    

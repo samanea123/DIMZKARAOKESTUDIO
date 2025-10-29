@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Cast } from 'lucide-react';
@@ -22,6 +21,7 @@ export default function CastButton() {
   
   const lastCastedVideoIdRef = useRef<string | null>(null);
 
+  // 1. Inisialisasi Google Cast Framework
   useEffect(() => {
     const initializeCastApi = () => {
       try {
@@ -31,12 +31,13 @@ export default function CastButton() {
           autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
         });
 
+        // 2. Lacak perubahan sesi (terhubung/terputus)
         const handleSessionStateChange = (event: any) => {
           console.log('Cast Session State Changed:', event.sessionState);
           const currentSession = context.getCurrentSession();
           setCastSession(currentSession);
           if (event.sessionState === 'SESSION_ENDED' || event.sessionState === 'SESSION_START_FAILED') {
-            lastCastedVideoIdRef.current = null;
+            lastCastedVideoIdRef.current = null; // Reset saat sesi berakhir
           }
         };
 
@@ -45,6 +46,7 @@ export default function CastButton() {
           handleSessionStateChange
         );
         
+        // Set sesi awal saat komponen dimuat
         setCastSession(context.getCurrentSession());
         
         setIsCastApiAvailable(true);
@@ -55,6 +57,7 @@ export default function CastButton() {
       }
     };
     
+    // Gunakan listener resmi untuk memastikan API siap
     window.__onGCastApiAvailable = (isAvailable) => {
         if (isAvailable) {
             console.log('Google Cast API is available.');
@@ -66,24 +69,27 @@ export default function CastButton() {
     };
   }, []); 
 
-  const castToTV = (videoId: string, session: any) => {
-    if (!session || !nowPlaying) return;
+  // 3. Fungsi untuk mengirim video ke TV
+  const castToTV = (videoId: string, title: string, artist: string, imageUrl: string, session: any) => {
+    if (!session) return;
 
     console.log(`Casting YouTube video ID: ${videoId} to TV...`);
 
-    const mediaInfo = new window.chrome.cast.media.MediaInfo(videoId, 'video/youtube');
+    // MediaInfo untuk YouTube butuh tipe khusus
+    const mediaInfo = new window.chrome.cast.media.MediaInfo(videoId, 'video/x-youtube');
     
+    // Metadata untuk menampilkan info di TV
     mediaInfo.metadata = new window.chrome.cast.media.YouTubeMediaMetadata();
-    mediaInfo.metadata.title = nowPlaying.title;
-    mediaInfo.metadata.artist = nowPlaying.channelTitle;
-    mediaInfo.metadata.images = [{ 'url': nowPlaying.thumbnails.high.url }];
+    mediaInfo.metadata.title = title;
+    mediaInfo.metadata.artist = artist;
+    mediaInfo.metadata.images = [{ 'url': imageUrl }];
     
     const request = new window.chrome.cast.media.LoadRequest(mediaInfo);
     
     session.loadMedia(request).then(
       () => {
         console.log('✅ Media berhasil di-cast ke TV');
-        lastCastedVideoIdRef.current = videoId;
+        lastCastedVideoIdRef.current = videoId; // Tandai video ini sudah di-cast
       },
       (error: any) => {
         console.error('❌ Gagal cast:', error);
@@ -96,28 +102,37 @@ export default function CastButton() {
     );
   };
   
+  // 4. Otomatis Cast saat lagu baru dimulai (`nowPlaying` berubah)
   useEffect(() => {
     const videoId = nowPlaying?.youtubeVideoId;
+    // Cek jika ada sesi, ada video, dan video tersebut belum pernah di-cast di sesi ini
     if (castSession && videoId && videoId !== lastCastedVideoIdRef.current) {
-        castToTV(videoId, castSession);
+        castToTV(
+          videoId, 
+          nowPlaying.title, 
+          nowPlaying.channelTitle, 
+          nowPlaying.thumbnails.high.url, 
+          castSession
+        );
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nowPlaying?.youtubeVideoId, castSession]);
+  }, [nowPlaying?.youtubeVideoId, castSession]); // Pantau perubahan lagu dan sesi
 
 
   if (!isCastApiAvailable) {
+    // Tampilkan ikon disabled jika API belum siap
     return <Cast className="text-muted-foreground/50" />;
   }
 
+  // 5. Tampilkan tombol Cast resmi dari Google
   return (
     <google-cast-launcher style={{
       display: 'inline-block', 
       width: '24px', 
       height: '24px', 
       cursor: 'pointer', 
-      '--cast-button-color': 'hsl(var(--primary))'
+      // Tombol akan otomatis berubah warna saat terhubung
+      '--cast-button-color': 'hsl(var(--primary))' 
     }} />
   );
 }
-
-    

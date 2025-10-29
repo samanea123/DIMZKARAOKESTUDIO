@@ -25,7 +25,7 @@ export default function SongQueue() {
     <Card className="h-full flex flex-col bg-transparent xl:bg-card">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="font-headline">Daftar Antrian</CardTitle>
-        {queue.length > 1 && (
+        {queue && queue.length > 1 && (
             <Button size="sm" variant="outline" onClick={playNextSong}>
                 <SkipForward className="h-4 w-4 mr-2"/>
                 Lagu Berikutnya
@@ -51,7 +51,7 @@ export default function SongQueue() {
                   </TableCell>
                 </TableRow>
               )}
-              {!isQueueLoading && queue.map((song, index) => (
+              {!isQueueLoading && queue && queue.map((song, index) => (
                 <TableRow 
                   key={song.id} 
                   className={index === 0 ? "bg-primary/10 group" : "group"}
@@ -104,7 +104,7 @@ export default function SongQueue() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isQueueLoading && queue.length === 0 && (
+              {!isQueueLoading && (!queue || queue.length === 0) && (
                 <TableRow>
                     <TableCell colSpan={4} className="text-center text-muted-foreground h-24">
                         Antrian masih kosong.
