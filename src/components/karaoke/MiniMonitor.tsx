@@ -2,7 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { useKaraoke } from "@/context/KaraokeContext";
+import { useKaraoke, type YoutubeVideo } from "@/context/KaraokeContext";
 import { Music, Pause, Play, SkipBack, SkipForward, StopCircle, Volume1, Volume2, VolumeX, Cast } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/button";
@@ -30,9 +30,57 @@ export default function MiniMonitor() {
   const [isCastApiAvailable, setIsCastApiAvailable] = useState(false);
   const [castSession, setCastSession] = useState<any | null>(null);
   const [isCasting, setIsCasting] = useState(false);
+  const mediaSessionRef = useRef<any | null>(null);
 
   // 1. Initialize Cast API
   useEffect(() => {
+    const initializeCastApi = () => {
+        try {
+            const castContext = window.cast.framework.CastContext.getInstance();
+            castContext.setOptions({
+              receiverApplicationId: window.chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+              autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
+            });
+
+            const handleSessionStateChanged = (event: any) => {
+              const session = castContext.getCurrentSession();
+              if (event.sessionState === window.cast.framework.SessionState.SESSION_STARTED) {
+                setIsCasting(true);
+                setCastSession(session);
+                if (nowPlaying) {
+                  loadMedia(nowPlaying, 0, true);
+                }
+              } else if (
+                  event.sessionState === window.cast.framework.SessionState.SESSION_ENDED ||
+                  event.sessionState === window.cast.framework.SessionState.SESSION_LOST
+                ) {
+                setIsCasting(false);
+                setCastSession(null);
+                mediaSessionRef.current = null;
+                // If a song was playing, resume it locally
+                if (nowPlaying && playerRef.current?.getPlayerState() !== window.YT.PlayerState.PLAYING) {
+                    playerRef.current?.playVideo();
+                    setIsPlaying(true);
+                }
+              }
+            };
+            
+            castContext.addEventListener(
+                window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+                handleSessionStateChanged
+            );
+            
+            const session = castContext.getCurrentSession();
+            if (session) {
+              setIsCasting(true);
+              setCastSession(session);
+              syncCastPlayerState(session);
+            }
+        } catch (err) {
+            console.error("Error initializing Cast API:", err);
+        }
+    };
+      
     window.__onGCastApiAvailable = (isAvailable) => {
       if (isAvailable) {
         setIsCastApiAvailable(true);
@@ -42,62 +90,19 @@ export default function MiniMonitor() {
     
     // Fallback if the script is already loaded
     if (window.cast && window.cast.framework) {
-        setIsCastApiAvailable(true);
-        initializeCastApi();
+        if (!isCastApiAvailable) {
+             setIsCastApiAvailable(true);
+             initializeCastApi();
+        }
     }
-  }, []);
+  }, [isCastApiAvailable, nowPlaying]);
 
-  const initializeCastApi = () => {
-    const castContext = window.cast.framework.CastContext.getInstance();
-    
-    castContext.setOptions({
-      receiverApplicationId: window.chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-      autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
-    });
-    
-    const handleSessionStateChanged = (event: any) => {
-      const session = castContext.getCurrentSession();
-      if (event.sessionState === window.cast.framework.SessionState.SESSION_STARTED) {
-        setIsCasting(true);
-        setCastSession(session);
-        if (nowPlaying) {
-          loadMedia(nowPlaying, 0, true);
-        }
-      } else if (
-          event.sessionState === window.cast.framework.SessionState.SESSION_ENDED ||
-          event.sessionState === window.cast.framework.SessionState.SESSION_LOST
-        ) {
-        setIsCasting(false);
-        setCastSession(null);
-        if (nowPlaying && playerRef.current) {
-            // Resume local playback if casting ends
-            playerRef.current.playVideo();
-            setIsPlaying(true);
-        }
-      }
-    };
-    
-    castContext.addEventListener(
-        window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
-        handleSessionStateChanged
-    );
-    
-    // Restore existing session
-    const session = castContext.getCurrentSession();
-    if (session) {
-      setIsCasting(true);
-      setCastSession(session);
-      syncCastPlayerState(); // Sync with the restored session
-    }
-  };
   
   // 2. Load media on the cast device
   const loadMedia = (song: YoutubeVideo, startTime = 0, autoplay = true) => {
     if (!isCasting || !castSession) return;
 
-    // For YouTube, contentId is the videoId, contentType is 'video/x-youtube'
     const mediaInfo = new window.chrome.cast.media.MediaInfo(song.id.videoId, 'video/x-youtube');
-    // It's a good practice to add metadata for the receiver app UI
     mediaInfo.metadata = new window.chrome.cast.media.GenericMediaMetadata();
     mediaInfo.metadata.title = song.snippet.title;
     mediaInfo.metadata.artist = song.snippet.channelTitle;
@@ -109,8 +114,7 @@ export default function MiniMonitor() {
 
     castSession.loadMedia(request).then(
       () => {
-        console.log('Load succeed'); 
-        syncCastPlayerState();
+        syncCastPlayerState(castSession);
       },
       (errorCode: any) => { 
         console.error('Error loading media: ' + errorCode); 
@@ -119,34 +123,40 @@ export default function MiniMonitor() {
   };
 
   // 3. Sync local state with cast player state
-  const syncCastPlayerState = () => {
-    if (!isCasting || !castSession) return;
-    const mediaSession = castSession.getMediaSession();
+  const syncCastPlayerState = (session: any) => {
+    if (!session) return;
+    const mediaSession = session.getMediaSession();
     if (!mediaSession) return;
     
-    // Sync playing state
-    setIsPlaying(mediaSession.playerState === 'PLAYING');
-    
-    // Sync volume
+    mediaSessionRef.current = mediaSession;
+
+    const currentIsPlaying = mediaSession.playerState === 'PLAYING' || mediaSession.playerState === 'BUFFERING';
+    setIsPlaying(currentIsPlaying);
     setVolume(mediaSession.volume.level * 100);
 
-    // Add listeners for remote changes
-    mediaSession.addUpdateListener((isAlive: boolean) => {
-        if (!isAlive) {
+    const updateListener = (isAlive: boolean) => {
+        if (!isAlive || !mediaSessionRef.current) {
             setIsPlaying(false);
             return;
         }
-        const currentIsPlaying = mediaSession.playerState === 'PLAYING' || mediaSession.playerState === 'BUFFERING';
-        setIsPlaying(currentIsPlaying);
+        
+        const currentIsPlaying = mediaSessionRef.current.playerState === 'PLAYING' || mediaSessionRef.current.playerState === 'BUFFERING';
+        if (isPlaying !== currentIsPlaying) {
+          setIsPlaying(currentIsPlaying);
+        }
 
         // Handle auto-next when song finishes on cast device
-        if (mediaSession.idleReason === 'FINISHED' && mediaSession.playerState === 'IDLE') {
+        if (mediaSessionRef.current.idleReason === 'FINISHED' && mediaSessionRef.current.playerState === 'IDLE') {
           if(lastPlayedSongRef.current) {
             addToHistory(lastPlayedSongRef.current, mode);
           }
           playNextSong();
         }
-    });
+    };
+
+    // Remove old listener before adding a new one
+    mediaSession.removeUpdateListener(updateListener);
+    mediaSession.addUpdateListener(updateListener);
   };
 
 
@@ -171,30 +181,34 @@ export default function MiniMonitor() {
 
   // Control player based on nowPlaying
   useEffect(() => {
-    if (isCasting && castSession && nowPlaying) {
-      loadMedia(nowPlaying);
-      playerRef.current?.pauseVideo(); // Pause local player when casting starts
-    } else if (nowPlaying && playerRef.current?.loadVideoById) {
-      playerRef.current.loadVideoById(nowPlaying.id.videoId);
-      playerRef.current.setVolume(volume);
-    } else if (!nowPlaying && playerRef.current) {
-        playerRef.current.stopVideo();
-        setIsPlaying(false);
-        playerRef.current.destroy(); // Manually destroy to show placeholder
-        createPlayer();
-    } else if (nowPlaying && !playerRef.current && window.YT) {
-        createPlayer();
-    }
-
-    if(nowPlaying) {
+    if (nowPlaying) {
+      if (isCasting && castSession) {
+        loadMedia(nowPlaying);
+        playerRef.current?.pauseVideo(); // Pause local player when casting starts
+      } else if (playerRef.current?.loadVideoById) {
+        playerRef.current.loadVideoById(nowPlaying.id.videoId);
+        playerRef.current.setVolume(volume);
+      } else if (!playerRef.current && window.YT) {
+          createPlayer();
+      }
       lastPlayedSongRef.current = nowPlaying;
+    } else {
+       if (isCasting && mediaSessionRef.current) {
+         mediaSessionRef.current.stop(null, ()=>{}, ()=>{});
+       }
+       if(playerRef.current) {
+          playerRef.current.stopVideo();
+          setIsPlaying(false);
+          playerRef.current.destroy();
+          createPlayer();
+       }
     }
-  }, [nowPlaying, isCasting, castSession]); // Re-evaluate when casting state changes
+  }, [nowPlaying, isCasting, castSession]); 
   
   const createPlayer = () => {
     if (!document.getElementById(playerDivId) || playerRef.current) return;
     
-    playerRef.current = new window.YT.Player(playerDivId, {
+    const newPlayer = new window.YT.Player(playerDivId, {
       height: '100%',
       width: '100%',
       videoId: nowPlaying?.id.videoId,
@@ -206,16 +220,17 @@ export default function MiniMonitor() {
       },
       events: {
         onReady: (event) => {
+            playerRef.current = newPlayer; // Assign here to ensure it's set
             if(nowPlaying && !isCasting) {
                 event.target.setVolume(volume);
                 event.target.playVideo();
             }
         },
         onStateChange: (event) => {
-          if (!isCasting) { // Only control state if not casting
-            if (event.data === window.YT.PlayerState.PLAYING) setIsPlaying(true);
-            else if (event.data !== window.YT.PlayerState.BUFFERING) setIsPlaying(false);
-          }
+          if (isCasting) return;
+          if (event.data === window.YT.PlayerState.PLAYING) setIsPlaying(true);
+          else if (event.data !== window.YT.PlayerState.BUFFERING) setIsPlaying(false);
+          
           if (event.data === window.YT.PlayerState.ENDED) {
             if(lastPlayedSongRef.current) addToHistory(lastPlayedSongRef.current, mode);
             playNextSong();
@@ -227,12 +242,11 @@ export default function MiniMonitor() {
 
   const handlePlayPause = () => {
     if (!nowPlaying) return;
-    if (isCasting && castSession && castSession.getMediaSession()) {
-        const mediaSession = castSession.getMediaSession();
-        if (mediaSession.playerState === 'PLAYING') {
-            mediaSession.pause(null);
+    if (isCasting && mediaSessionRef.current) {
+        if (mediaSessionRef.current.playerState === 'PLAYING') {
+            mediaSessionRef.current.pause(null);
         } else {
-            mediaSession.play(null);
+            mediaSessionRef.current.play(null);
         }
         return;
     }
@@ -246,18 +260,16 @@ export default function MiniMonitor() {
   };
 
   const handleStop = () => {
-    if (isCasting && castSession && castSession.getMediaSession()) {
-      castSession.getMediaSession().stop(null, 
-        () => { 
-            // This will trigger state change listeners to update UI
-        }, 
+    if (isCasting && mediaSessionRef.current) {
+      mediaSessionRef.current.stop(null, 
+        () => { /* Success */ }, 
         () => console.error("Failed to stop cast media")
       );
     }
     if (nowPlaying) {
       addToHistory(nowPlaying, mode);
     }
-    stopPlayback(); // This clears the queue
+    stopPlayback();
   };
 
   const handleNext = () => {
@@ -274,34 +286,46 @@ export default function MiniMonitor() {
   const handleVolumeChange = (newVolume: number[]) => {
     const vol = newVolume[0];
     setVolume(vol);
-     if (isCasting && castSession && castSession.getMediaSession()) {
+     if (isCasting && mediaSessionRef.current) {
       const volumeRequest = new window.chrome.cast.media.VolumeRequest();
       const newCastVolume = new window.chrome.cast.Volume();
       newCastVolume.level = vol / 100;
       volumeRequest.volume = newCastVolume;
-      castSession.getMediaSession().setVolume(volumeRequest, () => {}, () => {});
+      mediaSessionRef.current.setVolume(volumeRequest, () => {}, () => {});
     } else if (playerRef.current) {
       playerRef.current.setVolume(vol);
     }
   };
 
   const VolumeIcon = volume === 0 ? VolumeX : volume < 50 ? Volume1 : Volume2;
+  
+  let castStatusText = "Pilih lagu untuk memulai";
+  if (isCasting) {
+      if (nowPlaying) {
+          if (isPlaying) {
+              castStatusText = "Memutar di TV";
+          } else {
+              castStatusText = "Dijeda di TV";
+          }
+      } else {
+          castStatusText = "Pilih lagu untuk di-cast";
+      }
+  }
+
 
   return (
     <Card className="h-full flex flex-col bg-black/50 border-2 border-primary/20 shadow-[0_0_20px_hsl(var(--primary)/0.2)]">
       <CardHeader className="flex-row justify-between items-center">
         <CardTitle className="font-headline text-primary/80">Layar Monitor</CardTitle>
-        {isCastApiAvailable && <google-cast-launcher class={cn(isCasting ? "text-primary" : "")}></google-cast-launcher>}
+        {isCastApiAvailable && <google-cast-launcher class={cn("w-6 h-6 text-white hover:text-primary", isCasting ? "!text-primary" : "")}></google-cast-launcher>}
       </CardHeader>
       <CardContent className="flex-1 flex flex-col items-center justify-center text-center p-0 bg-black relative">
-        {/* Local Player Div, hidden when casting */}
         <div id={playerDivId} className={cn("w-full h-full", { 'opacity-0 pointer-events-none': isCasting })} />
         
-        {/* Placeholder shown when no song is playing OR when casting */}
         {(!nowPlaying || isCasting) && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-2xl md:text-3xl lg:text-4xl font-bold leading-loose text-gray-500 font-sans gap-2 p-4">
-                <Music size={64} />
-                <p>{isCasting ? (nowPlaying ? "Memutar di TV" : "Pilih lagu untuk di-cast") : "Pilih lagu untuk memulai"}</p>
+                <Cast size={64} className={cn({"text-primary": isCasting})} />
+                <p>{castStatusText}</p>
             </div>
         )}
       </CardContent>
