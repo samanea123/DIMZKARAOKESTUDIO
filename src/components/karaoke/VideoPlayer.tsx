@@ -19,19 +19,6 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
   const { toast } = useToast();
   const videoId = nowPlaying?.youtubeVideoId;
 
-  const enterFullscreen = () => {
-    const elem = containerRef.current;
-     if (elem && !document.fullscreenElement) {
-        if (elem.requestFullscreen) {
-            elem.requestFullscreen().catch(err => console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`));
-        } else if ((elem as any).webkitRequestFullscreen) { /* Safari */
-            (elem as any).webkitRequestFullscreen();
-        } else if ((elem as any).msRequestFullscreen) { /* IE11 */
-            (elem as any).msRequestFullscreen();
-        }
-    }
-  };
-
   useEffect(() => {
     const onPlayerStateChange = (event: any) => {
       // @ts-ignore - YT.PlayerState.ENDED adalah 0
@@ -40,10 +27,6 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
           addToHistory(nowPlaying);
         }
         playNextSong();
-      }
-      // @ts-ignore - YT.PlayerState.PLAYING adalah 1
-      if (isMonitor && event.data === window.YT.PlayerState.PLAYING) {
-        enterFullscreen();
       }
     };
 
