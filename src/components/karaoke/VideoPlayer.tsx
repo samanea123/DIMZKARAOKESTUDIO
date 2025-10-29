@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useKaraoke } from "@/context/KaraokeContext";
@@ -10,89 +9,81 @@ export default function VideoPlayer() {
   const { nowPlaying, playNextSong, addToHistory } = useKaraoke();
   const playerRef = useRef<any>(null);
   const { toast } = useToast();
+  const videoId = nowPlaying?.id?.videoId;
 
   useEffect(() => {
-    // Fungsi untuk membuat pemutar YouTube
-    const createPlayer = (videoId: string) => {
-      // Hancurkan pemutar lama jika ada untuk menghindari duplikasi
+    const onPlayerStateChange = (event: any) => {
+      // @ts-ignore - YT.PlayerState.ENDED adalah 0
+      if (event.data === window.YT.PlayerState.ENDED) { 
+        if (nowPlaying) {
+          addToHistory(nowPlaying);
+        }
+        playNextSong();
+      }
+    };
+
+    const onPlayerError = (event: any) => {
+      console.error("YouTube Player Error:", event.data);
+      toast({
+        variant: "destructive",
+        title: "Video Error",
+        description: "Video tidak dapat diputar, melompat ke lagu berikutnya.",
+      });
+      if (nowPlaying) {
+          addToHistory(nowPlaying);
+      }
+      playNextSong();
+    };
+
+    const createPlayer = () => {
+      // Hancurkan pemutar lama jika ada
       if (playerRef.current && typeof playerRef.current.destroy === 'function') {
         playerRef.current.destroy();
       }
-      
+
+      // Buat pemutar baru
       // @ts-ignore
       playerRef.current = new window.YT.Player("youtube-player-iframe", {
         videoId: videoId,
         playerVars: {
-          autoplay: 1,
+          autoplay: 1, // Penting untuk auto-play
           controls: 1,
-          fs: 0, // Disable fullscreen button
+          fs: 0,
           modestbranding: 1,
           rel: 0,
         },
         events: {
-          onReady: (event: any) => {
-            event.target.playVideo();
-          },
-          onStateChange: (event: any) => {
-            // @ts-ignore - YT.PlayerState.ENDED adalah 0
-            if (event.data === window.YT.PlayerState.ENDED) { 
-              if (nowPlaying) {
-                addToHistory(nowPlaying);
-              }
-              playNextSong();
-            }
-          },
-          onError: (event: any) => {
-            console.error("YouTube Player Error:", event.data);
-            toast({
-              variant: "destructive",
-              title: "Video Error",
-              description: "Video tidak dapat diputar, melompat ke lagu berikutnya.",
-            });
-            if (nowPlaying) {
-                addToHistory(nowPlaying);
-            }
-            playNextSong();
-          },
+          onStateChange: onPlayerStateChange,
+          onError: onPlayerError,
         },
       });
     };
 
-    const videoId = nowPlaying?.id?.videoId;
-
     if (videoId) {
-       // @ts-ignore
+      // @ts-ignore
       if (window.YT && window.YT.Player) {
-        createPlayer(videoId);
+        createPlayer();
       } else {
-        // Jika API belum siap, tunggu event onYouTubeIframeAPIReady
         // @ts-ignore
-        window.onYouTubeIframeAPIReady = () => {
-          if (nowPlaying?.id?.videoId) {
-            createPlayer(nowPlaying.id.videoId);
-          }
-        };
+        window.onYouTubeIframeAPIReady = createPlayer;
       }
     } else {
-      // Jika tidak ada lagu, hancurkan pemutar yang ada
+      // Jika tidak ada video, hancurkan pemutar
       if (playerRef.current && typeof playerRef.current.destroy === 'function') {
         playerRef.current.destroy();
         playerRef.current = null;
       }
     }
-    
-    // Cleanup function untuk menghancurkan pemutar saat komponen di-unmount
+
+    // Cleanup function
     return () => {
-        if (playerRef.current && typeof playerRef.current.destroy === 'function') {
-            try {
-                playerRef.current.destroy();
-            } catch (e) {
-                console.error("Error destroying youtube player", e);
-            }
-            playerRef.current = null;
-        }
+      // @ts-ignore
+      if(window.onYouTubeIframeAPIReady === createPlayer) {
+        // @ts-ignore
+        window.onYouTubeIframeAPIReady = undefined;
+      }
     };
-  }, [nowPlaying?.id?.videoId, addToHistory, playNextSong, toast]);
+  }, [videoId, addToHistory, playNextSong, toast]);
 
 
   return (
