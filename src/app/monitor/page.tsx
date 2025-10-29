@@ -16,12 +16,7 @@ function MonitorPageContent() {
         const handleFullscreenChange = () => {
             setIsFullscreen(!!document.fullscreenElement);
         };
-
         document.addEventListener('fullscreenchange', handleFullscreenChange);
-
-        // Set initial state
-        setIsFullscreen(!!document.fullscreenElement);
-
         return () => {
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
         };
@@ -31,13 +26,13 @@ function MonitorPageContent() {
         if (containerRef.current) {
             containerRef.current.requestFullscreen().catch(err => {
                 console.error("Gagal masuk mode layar penuh:", err);
+                alert("Mode layar penuh gagal. Pastikan browser Anda mengizinkannya.");
             });
         }
     };
-    
-    // If it's already fullscreen OR a song is playing, show the player.
-    // This handles cases where the user enters fullscreen first, or a song starts playing.
-    if (isFullscreen || nowPlaying) {
+
+    // If a song is playing OR the screen is already in fullscreen mode, show the player.
+    if (nowPlaying || isFullscreen) {
         return (
             <div ref={containerRef} className="flex flex-col h-screen w-screen bg-black items-center justify-center text-white">
                 <VideoPlayer />
@@ -45,13 +40,13 @@ function MonitorPageContent() {
         );
     }
     
-    // Initial state: not fullscreen and no song is playing. Show the button.
+    // Initial state: No song is playing and not in fullscreen. Show the button to enter fullscreen.
     return (
-        <div ref={containerRef} className="flex flex-col h-screen w-screen bg-black items-center justify-center text-white">
-             <div className="text-center text-muted-foreground p-8">
+        <div ref={containerRef} className="flex flex-col h-screen w-screen bg-black items-center justify-center text-white p-8">
+             <div className="text-center text-muted-foreground">
                 <Tv2 size={64} className="mx-auto mb-4" />
                 <h1 className="text-4xl font-headline text-white">Layar Monitor Karaoke</h1>
-                <p className="mt-2 mb-8">Klik untuk memulai pengalaman layar penuh.</p>
+                <p className="mt-2 mb-8">Klik tombol di bawah untuk pengalaman layar penuh yang imersif di TV atau monitor kedua Anda.</p>
                 <Button onClick={enterFullscreen} size="lg" className="text-lg">
                     <Expand className="mr-2" />
                     Masuk Layar Penuh
