@@ -19,19 +19,15 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
   const { toast } = useToast();
   const videoId = nowPlaying?.youtubeVideoId;
 
-  const handlePlay = () => {
-    const videoElement = playerRef.current?.g; // The underlying <iframe> element
-    if (isMonitor && videoElement) {
-        // Request fullscreen on the container for better control
-        const container = containerRef.current;
-        if (container && !document.fullscreenElement) {
-             if (container.requestFullscreen) {
-                container.requestFullscreen().catch(err => console.error("Error attempting to enable full-screen mode:", err));
-            } else if ((container as any).webkitRequestFullscreen) { /* Safari */
-                (container as any).webkitRequestFullscreen();
-            } else if ((container as any).msRequestFullscreen) { /* IE11 */
-                (container as any).msRequestFullscreen();
-            }
+  const enterFullscreen = () => {
+    const elem = containerRef.current;
+     if (elem && !document.fullscreenElement) {
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen().catch(err => console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`));
+        } else if ((elem as any).webkitRequestFullscreen) { /* Safari */
+            (elem as any).webkitRequestFullscreen();
+        } else if ((elem as any).msRequestFullscreen) { /* IE11 */
+            (elem as any).msRequestFullscreen();
         }
     }
   };
@@ -47,7 +43,7 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
       }
       // @ts-ignore - YT.PlayerState.PLAYING adalah 1
       if (isMonitor && event.data === window.YT.PlayerState.PLAYING) {
-        handlePlay();
+        enterFullscreen();
       }
     };
 
@@ -120,8 +116,10 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
         if (playerRef.current) {
              setIsTransitioning(true);
              setTimeout(() => {
-                playerRef.current.destroy();
-                playerRef.current = null;
+                if(playerRef.current && playerRef.current.destroy) {
+                  playerRef.current.destroy();
+                  playerRef.current = null;
+                }
                 setIsTransitioning(false);
              }, 600);
         }

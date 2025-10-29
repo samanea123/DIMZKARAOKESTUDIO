@@ -1,62 +1,29 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import VideoPlayer from "@/components/karaoke/VideoPlayer";
 import { KaraokeProvider, useKaraoke } from "@/context/KaraokeContext";
-import { Tv2, Expand } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Tv2 } from "lucide-react";
 
 function MonitorPageContent() {
     const { nowPlaying } = useKaraoke();
-    const containerRef = useRef<HTMLDivElement>(null);
-    const [isFullscreen, setIsFullscreen] = useState(false);
 
-    useEffect(() => {
-        const handleFullscreenChange = () => {
-            setIsFullscreen(!!document.fullscreenElement);
-        };
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        return () => {
-            document.removeEventListener('fullscreenchange', handleFullscreenChange);
-        };
-    }, []);
-
-    const enterFullscreen = () => {
-        const elem = containerRef.current;
-        if (elem) {
-             if (elem.requestFullscreen) {
-                elem.requestFullscreen().catch(err => {
-                    console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-                    alert(`Gagal masuk mode layar penuh. Pastikan browser Anda mengizinkannya.`);
-                });
-            } else if ((elem as any).webkitRequestFullscreen) { /* Safari */
-                (elem as any).webkitRequestFullscreen();
-            } else if ((elem as any).msRequestFullscreen) { /* IE11 */
-                (elem as any).msRequestFullscreen();
-            }
-        }
-    };
-
-    // If a song is playing OR the screen is already in fullscreen mode, show the player.
-    if (nowPlaying || isFullscreen) {
+    // The VideoPlayer component will now handle the fullscreen logic internally when isMonitor is true.
+    // We just need to render it.
+    if (nowPlaying) {
         return (
-            <div ref={containerRef} className="h-screen w-screen bg-black">
+            <div className="h-screen w-screen bg-black">
                 <VideoPlayer isMonitor={true} />
             </div>
         );
     }
     
-    // Initial state: No song is playing and not in fullscreen. Show the button to enter fullscreen.
+    // Display a waiting message if no song is playing.
     return (
-        <div ref={containerRef} className="flex flex-col h-screen w-screen bg-black items-center justify-center text-white p-8">
+        <div className="flex flex-col h-screen w-screen bg-black items-center justify-center text-white p-8">
              <div className="text-center text-muted-foreground">
-                <Tv2 size={64} className="mx-auto mb-4" />
+                <Tv2 size={64} className="mx-auto mb-4 animate-pulse" />
                 <h1 className="text-4xl font-headline text-white">Layar Monitor Karaoke</h1>
-                <p className="mt-2 mb-8">Klik tombol di bawah untuk pengalaman layar penuh yang imersif di TV atau monitor kedua Anda.</p>
-                <Button onClick={enterFullscreen} size="lg" className="text-lg">
-                    <Expand className="mr-2" />
-                    Masuk Layar Penuh
-                </Button>
+                <p className="mt-2 mb-8">Menunggu lagu untuk diputar...</p>
             </div>
         </div>
     );
