@@ -24,8 +24,8 @@ export default function RootLayout({
       <body className="font-body antialiased">
         {children}
         <Toaster />
-        <Script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></Script>
-        <Script src="/cast_sender.js"></Script>
+        <Script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1" strategy="afterInteractive"></Script>
+        <Script src="/cast_sender.js" strategy="afterInteractive"></Script>
       </body>
     </html>
   );

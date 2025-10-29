@@ -12,30 +12,8 @@ import { cn } from "@/lib/utils";
 declare global {
   interface Window {
     __onGCastApiAvailable?: (isAvailable: boolean) => void;
-    cast?: typeof chrome.cast;
-    chrome?: {
-      cast?: {
-        media: {
-          MediaInfo: new (contentId: string, contentType: string) => chrome.cast.media.MediaInfo;
-          LoadRequest: new (mediaInfo: chrome.cast.media.MediaInfo) => chrome.cast.media.LoadRequest;
-        };
-        ApiConfig: new (
-          sessionRequest: chrome.cast.SessionRequest,
-          sessionListener: (e: chrome.cast.Session) => void,
-          receiverListener: (e: chrome.cast.ReceiverAvailability) => void
-        ) => chrome.cast.ApiConfig;
-        SessionRequest: new (appId: string) => chrome.cast.SessionRequest;
-        initialize: (
-          apiConfig: chrome.cast.ApiConfig,
-          onSuccess: () => void,
-          onError: (e: chrome.cast.Error) => void
-        ) => void;
-        requestSession: (
-          onSuccess: (e: chrome.cast.Session) => void,
-          onError: (e: chrome.cast.Error) => void
-        ) => void;
-      };
-    };
+    cast?: any;
+    chrome?: any;
   }
 }
 
@@ -48,69 +26,78 @@ export default function MiniMonitor() {
   const [volume, setVolume] = useState(50);
   const lastPlayedSongRef = useRef(nowPlaying);
   
-  const [castSession, setCastSession] = useState<cast.framework.CastSession | null>(null);
+  const [castSession, setCastSession] = useState<any | null>(null);
   const [isCasting, setIsCasting] = useState(false);
-  const castPlayer = useRef<cast.framework.RemotePlayer | null>(null);
-  const castPlayerController = useRef<cast.framework.RemotePlayerController | null>(null);
+  const castPlayer = useRef<any | null>(null);
+  const castPlayerController = useRef<any | null>(null);
 
 
   useEffect(() => {
-    const castContext = cast.framework.CastContext.getInstance();
+    window.__onGCastApiAvailable = (isAvailable) => {
+        if (isAvailable) {
+            initializeCastApi();
+        }
+    };
+  }, []);
+
+  const initializeCastApi = () => {
+    const castContext = window.cast.framework.CastContext.getInstance();
     
-    const handleSessionStateChanged = (event: cast.framework.SessionStateEventData) => {
+    const handleSessionStateChanged = (event: any) => {
       const session = castContext.getCurrentSession();
-      if (event.sessionState === cast.framework.SessionState.SESSION_STARTED) {
+      if (event.sessionState === window.cast.framework.SessionState.SESSION_STARTED) {
         setIsCasting(true);
         setCastSession(session);
         if (nowPlaying) {
           loadMedia(nowPlaying);
         }
-      } else if (event.sessionState === cast.framework.SessionState.SESSION_ENDED) {
+      } else if (event.sessionState === window.cast.framework.SessionState.SESSION_ENDED) {
         setIsCasting(false);
         setCastSession(null);
+        // If a song was playing, resume it locally
+        if (nowPlaying && playerRef.current) {
+            playerRef.current.playVideo();
+        }
       }
     };
     
     castContext.addEventListener(
-        cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+        window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
         handleSessionStateChanged
     );
     
-    // Remote Player
-    castPlayer.current = new cast.framework.RemotePlayer();
-    castPlayerController.current = new cast.framework.RemotePlayerController(castPlayer.current);
+    castPlayer.current = new window.cast.framework.RemotePlayer();
+    castPlayerController.current = new window.cast.framework.RemotePlayerController(castPlayer.current);
+    
+    castPlayerController.current.addEventListener(
+        window.cast.framework.RemotePlayerEventType.IS_PAUSED_CHANGED, () => {
+            setIsPlaying(!castPlayer.current.isPaused);
+        }
+    );
 
-    return () => {
-      castContext.removeEventListener(
-          cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
-          handleSessionStateChanged
-      );
+    // Check for existing session
+    const session = castContext.getCurrentSession();
+    if (session) {
+      setIsCasting(true);
+      setCastSession(session);
     }
-  }, [nowPlaying]);
+  }
 
 
   const loadMedia = (song: YoutubeVideo) => {
-    const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
+    const castSession = window.cast.framework.CastContext.getInstance().getCurrentSession();
     if (!castSession) return;
 
-    const mediaInfo = new chrome.cast.media.MediaInfo(song.id.videoId, 'video/youtube');
-    mediaInfo.customData = {
-        "player": "youtube"
-    };
-
-    const request = new chrome.cast.media.LoadRequest(mediaInfo);
+    const mediaInfo = new window.chrome.cast.media.MediaInfo(song.id.videoId, 'video/x-youtube');
+    // Using customData to hint the receiver to use a YouTube player
+    // This is a common pattern for generic receivers
+    const request = new window.chrome.cast.media.LoadRequest(mediaInfo);
     castSession.loadMedia(request).then(
-      () => { console.log('Load succeed'); },
+      () => { 
+          console.log('Load succeed'); 
+          setIsPlaying(true);
+      },
       (errorCode: any) => { console.log('Error code: ' + errorCode); }
-    );
-  };
-
-
-  const handleCastButtonClick = () => {
-    const castContext = cast.framework.CastContext.getInstance();
-    castContext.requestSession().then(
-        () => { console.log('Session requested');},
-        (err: any) => {console.error('Request session error', err)}
     );
   };
 
@@ -141,9 +128,9 @@ export default function MiniMonitor() {
 
   // Control player based on nowPlaying
   useEffect(() => {
-    if (isCasting && nowPlaying) {
+    if (isCasting && castSession && nowPlaying) {
       loadMedia(nowPlaying);
-      playerRef.current?.stopVideo(); // Stop local player
+      playerRef.current?.pauseVideo(); // Pause local player
     } else if (nowPlaying && playerRef.current?.loadVideoById) {
       playerRef.current.loadVideoById(nowPlaying.id.videoId);
       playerRef.current.setVolume(volume);
@@ -160,7 +147,7 @@ export default function MiniMonitor() {
     if(nowPlaying) {
       lastPlayedSongRef.current = nowPlaying;
     }
-  }, [nowPlaying, isCasting]);
+  }, [nowPlaying, isCasting, castSession]);
   
   const createPlayer = () => {
     if (!document.getElementById(playerDivId)) return;
@@ -184,10 +171,13 @@ export default function MiniMonitor() {
             }
         },
         onStateChange: (event) => {
-          if (event.data === YT.PlayerState.PLAYING) {
-            setIsPlaying(true);
-          } else if (event.data !== YT.PlayerState.BUFFERING) {
-            setIsPlaying(false);
+          // Sync local player state with global state, but only if not casting
+          if (!isCasting) {
+            if (event.data === YT.PlayerState.PLAYING) {
+              setIsPlaying(true);
+            } else if (event.data !== YT.PlayerState.BUFFERING) {
+              setIsPlaying(false);
+            }
           }
           if (event.data === YT.PlayerState.ENDED) {
             if(lastPlayedSongRef.current) {
@@ -203,16 +193,17 @@ export default function MiniMonitor() {
   const handlePlayPause = () => {
     if (isCasting && castPlayerController.current) {
         castPlayerController.current.playOrPause();
-        setIsPlaying(!castPlayer.current?.isPaused);
+        // The state will be updated by the remote player event listener
         return;
     }
     if (!playerRef.current) return;
-    if (isPlaying) {
+    const playerState = playerRef.current.getPlayerState();
+    if (playerState === YT.PlayerState.PLAYING) {
       playerRef.current.pauseVideo();
     } else {
       playerRef.current.playVideo();
     }
-    setIsPlaying(!isPlaying);
+    // State is updated by onStateChange event
   };
 
   const handleStop = () => {
@@ -257,7 +248,7 @@ export default function MiniMonitor() {
         <google-cast-launcher class={cn(isCasting ? "text-primary" : "")}></google-cast-launcher>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col items-center justify-center text-center p-0 bg-black relative">
-        <div id={playerDivId} className={cn("w-full h-full", { 'hidden': isCasting })} />
+        <div id={playerDivId} className={cn("w-full h-full", { 'opacity-0 pointer-events-none': isCasting })} />
         {(!nowPlaying || isCasting) && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-2xl md:text-3xl lg:text-4xl font-bold leading-loose text-gray-500 font-sans gap-2">
                 <Music size={64} />
