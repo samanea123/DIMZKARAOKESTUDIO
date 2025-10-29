@@ -22,7 +22,7 @@ export default function SearchResults({ videos }: { videos: SearchResult[] }) {
     <div className="w-full">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-1">
         {videos.map((video) => (
-            <Card key={video.id.videoId} className="overflow-hidden group hover:border-primary transition-colors relative">
+            <Card key={`${video.id.videoId}-${video.mode}`} className="overflow-hidden group hover:border-primary transition-colors relative">
               <CardContent className="p-0 relative aspect-video">
                   <Image
                   src={video.snippet.thumbnails.high.url}

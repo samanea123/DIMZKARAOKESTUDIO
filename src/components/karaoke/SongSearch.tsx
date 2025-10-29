@@ -104,9 +104,7 @@ export default function SongSearch() {
         newNextPageTokens[mode] = result.nextPageToken;
       });
       
-      const uniqueResults = Array.from(new Map(combinedResults.map(item => [item.id.videoId, item])).values());
-      
-      setResults(uniqueResults);
+      setResults(combinedResults);
       setNextPageTokens(newNextPageTokens);
 
     } catch (error) {
