@@ -8,6 +8,7 @@ import { useKaraoke } from "@/context/KaraokeContext";
 import Image from "next/image";
 import { Button } from "../ui/button";
 import { Loader, Play, SkipForward, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function SongQueue() {
   const { queue, isQueueLoading, playSongFromQueue, playNextSong, removeSongFromQueue, addSongToPlayNext } = useKaraoke();
@@ -54,21 +55,27 @@ export default function SongQueue() {
               {!isQueueLoading && queue.map((song, index) => (
                 <TableRow 
                   key={song.id} 
-                  className={index === 0 ? "bg-primary/10 group" : "group"}
+                  className={cn("group", index === 0 && "bg-primary/10")}
                 >
                   <TableCell>
-                    <Image
-                      src={song.thumbnails.default.url}
-                      alt={song.title}
-                      width={60}
-                      height={45}
-                      className="rounded-md object-cover"
-                    />
+                    <div className="relative w-[60px] h-[45px]">
+                      <Image
+                        src={song.thumbnails.default.url}
+                        alt={song.title}
+                        fill
+                        className="rounded-md object-cover"
+                      />
+                      {index === 0 && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                            <Play className="h-6 w-6 text-white" />
+                        </div>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="font-medium truncate max-w-[150px]">{song.title}</TableCell>
                   <TableCell className="truncate max-w-[100px]">{song.channelTitle}</TableCell>
                   <TableCell className="text-right">
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex justify-end items-center gap-1">
+                    <div className="flex justify-end items-center gap-1">
                       {index > 0 && (
                         <>
                           <Button
@@ -83,7 +90,7 @@ export default function SongQueue() {
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-8 w-8"
+                            className="h-8 w-8 hover:text-primary"
                             title="Antrikan Berikutnya"
                             onClick={() => addSongToPlayNext(song)}
                           >
@@ -94,11 +101,11 @@ export default function SongQueue() {
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-8 w-8"
+                        className="h-8 w-8 hover:text-destructive"
                         title="Hapus dari antrian"
                         onClick={(e) => handleRemoveSong(e, song.id, index === 0)}
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>
