@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,15 @@ import { SkipForward, Trash2 } from "lucide-react";
 
 export default function SongQueue() {
   const { queue, playSongFromQueue, playNextSong, removeSongFromQueue } = useKaraoke();
+
+  const handleRemoveSong = (e: React.MouseEvent, videoId: string, isNowPlaying: boolean) => {
+    e.stopPropagation();
+    if (isNowPlaying) {
+        playNextSong();
+    } else {
+        removeSongFromQueue(videoId);
+    }
+  }
 
   return (
     <Card className="h-full flex flex-col bg-transparent xl:bg-card">
@@ -37,7 +47,7 @@ export default function SongQueue() {
               {queue.map((song, index) => (
                 <TableRow 
                   key={`${song.id.videoId}-${index}`} 
-                  className={index === 0 ? "bg-primary/10" : "cursor-pointer hover:bg-primary/5 group"}
+                  className={index === 0 ? "bg-primary/10 group" : "cursor-pointer hover:bg-primary/5 group"}
                   onClick={() => index > 0 && playSongFromQueue(song.id.videoId)}
                 >
                   <TableCell>
@@ -52,19 +62,14 @@ export default function SongQueue() {
                   <TableCell className="font-medium truncate max-w-[150px]">{song.snippet.title}</TableCell>
                   <TableCell className="truncate max-w-[100px]">{song.snippet.channelTitle}</TableCell>
                   <TableCell className="text-right">
-                    {index > 0 && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => {
-                          e.stopPropagation(); // Mencegah trigger onClick pada TableRow
-                          removeSongFromQueue(song.id.videoId);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    )}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => handleRemoveSong(e, song.id.videoId, index === 0)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
