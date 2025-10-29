@@ -13,6 +13,7 @@ export default function VideoPlayer() {
   const videoId = nowPlaying?.id?.videoId;
 
   useEffect(() => {
+    // Fungsi untuk menangani event
     const onPlayerStateChange = (event: any) => {
       // @ts-ignore - YT.PlayerState.ENDED adalah 0
       if (event.data === window.YT.PlayerState.ENDED) {
@@ -44,13 +45,17 @@ export default function VideoPlayer() {
       playNextSong();
     };
 
-    const setupPlayer = () => {
-      if (playerRef.current) return; // Jangan buat jika sudah ada
-
+    // Fungsi untuk membuat pemutar
+    const createPlayer = () => {
+      // Hancurkan pemutar lama jika ada
+      if (playerRef.current) {
+        playerRef.current.destroy();
+      }
       // @ts-ignore
       playerRef.current = new window.YT.Player("youtube-player-iframe", {
         height: '100%',
         width: '100%',
+        videoId: videoId,
         playerVars: {
           autoplay: 1,
           controls: 1,
@@ -65,60 +70,35 @@ export default function VideoPlayer() {
       });
     };
 
-    // Inisialisasi API YouTube
-    // @ts-ignore
-    if (!window.YT) {
-      const tag = document.createElement('script');
-      tag.src = "https://www.youtube.com/iframe_api";
-      const firstScriptTag = document.getElementsByTagName('script')[0];
-      if (firstScriptTag && firstScriptTag.parentNode) {
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-      }
+    // Logika utama
+    if (videoId) {
       // @ts-ignore
-      window.onYouTubeIframeAPIReady = setupPlayer;
-    } else {
-      setupPlayer();
-    }
-
-    // Efek ini menangani pemuatan video baru
-    if (playerRef.current && playerRef.current.loadVideoById) {
-      if (videoId) {
-        playerRef.current.loadVideoById(videoId);
+      if (typeof window.YT === 'undefined' || typeof window.YT.Player === 'undefined') {
+        // Jika API belum siap, tunggu
+        // @ts-ignore
+        window.onYouTubeIframeAPIReady = createPlayer;
       } else {
-        playerRef.current.stopVideo();
-        playerRef.current.clearVideo();
+        // Jika API sudah siap
+        if (playerRef.current && playerRef.current.loadVideoById) {
+          // Jika pemutar sudah ada, cukup muat video baru
+          playerRef.current.loadVideoById(videoId);
+        } else {
+          // Jika pemutar belum ada, buat pemutar baru
+          createPlayer();
+        }
       }
-    } else if (videoId) {
-        // Jika pemutar belum siap tapi sudah ada videoId, coba buat lagi saat API siap
-        // @ts-ignore
-        window.onYouTubeIframeAPIReady = () => {
-            // @ts-ignore
-            playerRef.current = new window.YT.Player("youtube-player-iframe", {
-                height: '100%',
-                width: '100%',
-                videoId: videoId, // Muat video pertama kali
-                playerVars: {
-                    autoplay: 1,
-                    controls: 1,
-                    fs: 0,
-                    modestbranding: 1,
-                    rel: 0,
-                },
-                events: {
-                    onStateChange: onPlayerStateChange,
-                    onError: onPlayerError,
-                },
-            });
-        };
+    } else {
+      // Jika tidak ada videoId, hancurkan pemutar jika ada
+      if (playerRef.current) {
+        playerRef.current.destroy();
+        playerRef.current = null;
+      }
     }
 
-    // Cleanup: hanya hapus listener onYouTubeIframeAPIReady
+    // Cleanup: Pastikan pemutar dihancurkan saat komponen unmount
     return () => {
-        // @ts-ignore
-        if (window.onYouTubeIframeAPIReady) {
-             // @ts-ignore
-            window.onYouTubeIframeAPIReady = null;
-        }
+      // @ts-ignore
+      window.onYouTubeIframeAPIReady = null; // Hapus listener global untuk mencegah kebocoran
     };
 
   }, [videoId, addToHistory, playNextSong, toast]);
