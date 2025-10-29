@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 require('dotenv').config({ path: './.env.local' });
 
@@ -32,6 +33,12 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'i.ytimg.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'yt3.ggpht.com',
         port: '',
         pathname: '/**',
       }
