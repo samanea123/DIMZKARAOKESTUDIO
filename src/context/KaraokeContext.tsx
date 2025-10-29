@@ -23,6 +23,7 @@ interface KaraokeContextType {
   addSongToQueue: (song: YoutubeVideo) => void;
   removeSongFromQueue: (videoId: string) => void;
   playSongFromQueue: (videoId: string) => void;
+  playNextSong: () => void;
   nowPlaying?: YoutubeVideo;
 }
 
@@ -35,6 +36,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   const addSongToQueue = (song: YoutubeVideo) => {
     if (queue.some(s => s.id.videoId === song.id.videoId)) {
       toast({
+        variant: "destructive",
         title: "Lagu Sudah Ada",
         description: `${song.snippet.title} sudah ada di dalam antrian.`,
       })
@@ -61,10 +63,19 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const playNextSong = () => {
+    setQueue((prevQueue) => {
+      if (prevQueue.length <= 1) {
+        return [];
+      }
+      return prevQueue.slice(1);
+    });
+  };
+
   const nowPlaying = queue[0];
 
   return (
-    <KaraokeContext.Provider value={{ queue, addSongToQueue, removeSongFromQueue, playSongFromQueue, nowPlaying }}>
+    <KaraokeContext.Provider value={{ queue, addSongToQueue, removeSongFromQueue, playSongFromQueue, playNextSong, nowPlaying }}>
       {children}
     </KaraokeContext.Provider>
   );
