@@ -5,14 +5,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "../ui/scroll-area";
 import { useKaraoke } from "@/context/KaraokeContext";
 import Image from "next/image";
+import { Button } from "../ui/button";
+import { SkipForward } from "lucide-react";
 
 export default function SongQueue() {
-  const { queue, playSongFromQueue } = useKaraoke();
+  const { queue, playSongFromQueue, playNextSong } = useKaraoke();
 
   return (
     <Card className="h-full flex flex-col bg-transparent xl:bg-card">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="font-headline">Daftar Antrian</CardTitle>
+        {queue.length > 1 && (
+            <Button size="sm" variant="outline" onClick={playNextSong}>
+                <SkipForward className="h-4 w-4 mr-2"/>
+                Lagu Berikutnya
+            </Button>
+        )}
       </CardHeader>
       <CardContent className="flex-1 p-0 min-h-0">
         <ScrollArea className="h-full">
