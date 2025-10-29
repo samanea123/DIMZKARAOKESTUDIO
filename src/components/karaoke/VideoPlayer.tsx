@@ -12,19 +12,27 @@ export default function VideoPlayer() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const createPlayer = () => {
-      if (playerRef.current) {
+    // Fungsi untuk membuat pemutar YouTube
+    const createPlayer = (videoId: string) => {
+      // Hancurkan pemutar lama jika ada
+      if (playerRef.current && typeof playerRef.current.destroy === 'function') {
         playerRef.current.destroy();
       }
+      
       // @ts-ignore
       playerRef.current = new window.YT.Player("youtube-player-iframe", {
-        videoId: nowPlaying?.id.videoId,
+        videoId: videoId,
+        playerVars: {
+            autoplay: 1,
+            controls: 1,
+        },
         events: {
           onReady: (event: any) => {
             event.target.playVideo();
           },
           onStateChange: (event: any) => {
-            if (event.data === 0) { // 0 = ended
+            // Jika video selesai (state 0)
+            if (event.data === window.YT.PlayerState.ENDED) { 
               if (nowPlaying) {
                 addToHistory(nowPlaying);
               }
@@ -38,58 +46,51 @@ export default function VideoPlayer() {
               title: "Video Error",
               description: "Video tidak dapat diputar, melompat ke lagu berikutnya.",
             });
-             if (nowPlaying) {
+            // Tambahkan lagu yang gagal ke riwayat sebelum melompat
+            if (nowPlaying) {
                 addToHistory(nowPlaying);
-              }
+            }
             playNextSong();
           },
         },
       });
     };
 
-    if (nowPlaying) {
-      // @ts-ignore
-      if (window.YT && window.YT.Player) {
-        createPlayer();
-      } else {
-        // If YT API is not ready, wait for it.
-        // @ts-ignore
-        window.onYouTubeIframeAPIReady = createPlayer;
-      }
-    } else {
-        if (playerRef.current) {
-            playerRef.current.destroy();
-            playerRef.current = null;
+    // Fungsi untuk menginisialisasi pembuatan pemutar
+    const initialize = () => {
+        if (nowPlaying) {
+            // @ts-ignore
+            if (window.YT && window.YT.Player) {
+                createPlayer(nowPlaying.id.videoId);
+            } else {
+                // Tunggu API YouTube siap jika belum ada
+                // @ts-ignore
+                window.onYouTubeIframeAPIReady = () => createPlayer(nowPlaying.id.videoId);
+            }
+        } else {
+            // Jika tidak ada lagu, hancurkan pemutar
+            if (playerRef.current && typeof playerRef.current.destroy === 'function') {
+                playerRef.current.destroy();
+                playerRef.current = null;
+            }
         }
     }
     
-    return () => {
-        // Cleanup on component unmount
-        if (playerRef.current) {
-            // Check if destroy is a function before calling it
-            if (typeof playerRef.current.destroy === 'function') {
-                playerRef.current.destroy();
-            }
-            playerRef.current = null;
-        }
-    };
+    initialize();
 
+    // Cleanup effect
+    return () => {
+      // Tidak perlu menghancurkan di sini karena akan ditangani saat lagu berikutnya dimainkan atau komponen di-unmount
+    };
+  // Dependensi useEffect adalah videoId dari nowPlaying. 
+  // Ini memastikan useEffect berjalan setiap kali lagu berubah.
   }, [nowPlaying?.id.videoId]);
 
 
   return (
     <div className="h-full w-full bg-black flex items-center justify-center">
       {nowPlaying ? (
-        <iframe
-          id="youtube-player-iframe"
-          key={nowPlaying.id.videoId}
-          className="w-full h-full"
-          src={`https://www.youtube.com/embed/${nowPlaying.id.videoId}?autoplay=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
-          title="YouTube video player"
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        ></iframe>
+        <div id="youtube-player-iframe" className="w-full h-full" />
       ) : (
         <div className="text-center text-muted-foreground">
           <Tv2 size={48} className="mx-auto" />
@@ -99,3 +100,4 @@ export default function VideoPlayer() {
     </div>
   );
 }
+
