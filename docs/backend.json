@@ -1,0 +1,154 @@
+{
+  "entities": {
+    "Song": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Song",
+      "type": "object",
+      "description": "Represents a song in the karaoke system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Song entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the song."
+        },
+        "artist": {
+          "type": "string",
+          "description": "The artist of the song."
+        },
+        "albumCoverUrl": {
+          "type": "string",
+          "description": "URL of the song's album cover.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "artist",
+        "albumCoverUrl"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the karaoke system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "username": {
+          "type": "string",
+          "description": "The username of the user."
+        }
+      },
+      "required": [
+        "id",
+        "username"
+      ]
+    },
+    "SongQueueItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SongQueueItem",
+      "type": "object",
+      "description": "Represents an item in the song queue.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the SongQueueItem entity."
+        },
+        "songId": {
+          "type": "string",
+          "description": "Reference to Song. (Relationship: Song 1:N SongQueueItem)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N SongQueueItem)"
+        },
+        "addedAt": {
+          "type": "string",
+          "description": "Timestamp of when the song was added to the queue.",
+          "format": "date-time"
+        },
+        "order": {
+          "type": "number",
+          "description": "The order of the song in the queue."
+        }
+      },
+      "required": [
+        "id",
+        "songId",
+        "userId",
+        "addedAt",
+        "order"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/songs/{songId}",
+        "definition": {
+          "entityName": "Song",
+          "schema": {
+            "$ref": "#/backend/entities/Song"
+          },
+          "description": "Stores song metadata.  The '{songId}' is the unique identifier for each song.",
+          "params": [
+            {
+              "name": "songId",
+              "description": "Unique identifier for the song."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/songQueueItems/{songQueueItemId}",
+        "definition": {
+          "entityName": "SongQueueItem",
+          "schema": {
+            "$ref": "#/backend/entities/SongQueueItem"
+          },
+          "description": "Stores song queue items for each user. Path-based ownership is used.  '{userId}' is the owner of each queue item in this collection.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Unique identifier for the user."
+            },
+            {
+              "name": "songQueueItemId",
+              "description": "Unique identifier for the song queue item."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to efficiently manage songs and song queues within the karaoke application, focusing on authorization independence and clear data ownership. The `songs` collection stores song metadata. Each user has their own subcollection `songQueueItems` containing all `SongQueueItem` entities created by them. Path-based ownership is employed for user-specific queues ( `/users/{userId}/songQueueItems/{songQueueItemId}`). This achieves Authorization Independence, eliminating the need for `get()` calls in security rules to validate ownership. Segregation enables simple and secure `list` operations as each queue item is owned by the user derived from the collection path. The `users` collection stores user profiles."
+  }
+}
