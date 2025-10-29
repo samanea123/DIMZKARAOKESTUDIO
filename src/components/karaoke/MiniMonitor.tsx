@@ -78,6 +78,9 @@ export default function MiniMonitor() {
             }
         } catch (err) {
             console.error("Error initializing Cast API:", err);
+            // This can happen in sandboxed environments (like some IDEs)
+            // where Presentation API is not allowed.
+            setIsCastApiAvailable(false);
         }
     };
       
@@ -370,3 +373,5 @@ export default function MiniMonitor() {
     </Card>
   );
 }
+
+    
