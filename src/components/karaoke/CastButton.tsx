@@ -47,7 +47,11 @@ export default function CastButton() {
         );
         
         // Set sesi awal saat komponen dimuat
-        setCastSession(context.getCurrentSession());
+        const currentSession = context.getCurrentSession();
+        if (currentSession) {
+            setCastSession(currentSession);
+            console.log("Reconnected to existing cast session");
+        }
         
         setIsCastApiAvailable(true);
         console.log('Google Cast API initialized successfully.');
@@ -102,7 +106,7 @@ export default function CastButton() {
     );
   };
   
-  // 4. Otomatis Cast saat lagu baru dimulai (`nowPlaying` berubah)
+  // 4. Otomatis Cast saat lagu baru dimulai (`nowPlaying` berubah) atau saat sesi Cast terhubung kembali
   useEffect(() => {
     const videoId = nowPlaying?.youtubeVideoId;
     // Cek jika ada sesi, ada video, dan video tersebut belum pernah di-cast di sesi ini
@@ -116,7 +120,7 @@ export default function CastButton() {
         );
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nowPlaying?.youtubeVideoId, castSession]); // Pantau perubahan lagu dan sesi
+  }, [nowPlaying?.youtubeVideoId, castSession]);
 
 
   if (!isCastApiAvailable) {

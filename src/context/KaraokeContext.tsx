@@ -190,7 +190,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
 
   const addSongToPlayNext = async (song: QueueEntry) => {
-    if (!db) return;
+    if (!db || !queue) return;
 
     // The song to be played next should have an order between nowPlaying (if it exists) and the next song
     const newOrder = (nowPlaying?.order || 0) + 0.5;
@@ -237,12 +237,12 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
 
   const playSongFromQueue = (docId: string) => {
-    if (!db) return;
+    if (!db || !nowPlaying) return;
     const songToPlay = queue?.find(s => s.id === docId);
     if (!songToPlay) return;
 
     // To make it play now, we give it an order number smaller than the current `nowPlaying` song.
-    const newOrder = (nowPlaying?.order ?? 1) - 1;
+    const newOrder = nowPlaying.order - 1;
     
     const docRef = doc(db, "users", TEMP_USER_ID, "songQueueItems", docId);
     updateDocumentNonBlocking(docRef, { order: newOrder });

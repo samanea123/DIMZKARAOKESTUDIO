@@ -2,8 +2,9 @@
 "use client";
 
 import { useKaraoke } from "@/context/KaraokeContext";
+import { cn } from "@/lib/utils";
 import { Tv2 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 interface VideoPlayerProps {
@@ -13,24 +14,22 @@ interface VideoPlayerProps {
 export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
   const { nowPlaying, playNextSong, addToHistory } = useKaraoke();
   const playerRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const { toast } = useToast();
   const videoId = nowPlaying?.youtubeVideoId;
 
   const handlePlay = () => {
-    if (isMonitor && playerRef.current?.g) { // playerRef.current.g is the iframe
-      const videoElement = playerRef.current.g;
-      if (videoElement.requestFullscreen) {
-        videoElement.requestFullscreen();
-      } else if (videoElement.webkitRequestFullscreen) { /* Safari */
-        videoElement.webkitRequestFullscreen();
-      } else if (videoElement.msRequestFullscreen) { /* IE11 */
-        videoElement.msRequestFullscreen();
+    if (isMonitor && playerRef.current?.g?.requestFullscreen) {
+      try {
+        playerRef.current.g.requestFullscreen();
+      } catch (err) {
+        console.error("Gagal masuk mode layar penuh:", err);
       }
     }
   };
 
   useEffect(() => {
-    // Fungsi untuk menangani event
     const onPlayerStateChange = (event: any) => {
       // @ts-ignore - YT.PlayerState.ENDED adalah 0
       if (event.data === window.YT.PlayerState.ENDED) {
@@ -48,7 +47,6 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
     const onPlayerError = (event: any) => {
       console.error("YouTube Player Error:", event.data);
       let errorMessage = "Video tidak dapat diputar, melompat ke lagu berikutnya.";
-      // Error 150 & 101 adalah umum untuk video yang dibatasi pemutarannya
       if (event.data === 150 || event.data === 101) {
         errorMessage = "Pemilik video telah menonaktifkan pemutaran di luar YouTube. Melompat ke lagu berikutnya."
       }
@@ -59,16 +57,13 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
         description: errorMessage,
       });
 
-      // Tetap tambahkan ke riwayat meskipun error, lalu putar lagu berikutnya
       if (nowPlaying) {
           addToHistory(nowPlaying);
       }
       playNextSong();
     };
 
-    // Fungsi untuk membuat pemutar
-    const createPlayer = () => {
-      // Hancurkan pemutar lama jika ada
+    const createPlayer = (id: string) => {
       if (playerRef.current) {
         playerRef.current.destroy();
       }
@@ -76,11 +71,11 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
       playerRef.current = new window.YT.Player("youtube-player-iframe", {
         height: '100%',
         width: '100%',
-        videoId: videoId,
+        videoId: id,
         playerVars: {
           autoplay: 1,
-          controls: isMonitor ? 0 : 1, // Sembunyikan kontrol di monitor
-          fs: isMonitor ? 0 : 1, // Sembunyikan tombol fullscreen di monitor (sudah otomatis)
+          controls: isMonitor ? 0 : 1,
+          fs: isMonitor ? 0 : 1,
           modestbranding: 1,
           rel: 0,
         },
@@ -90,45 +85,52 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
         },
       });
     };
-
-    // Logika utama
-    if (videoId) {
-      // @ts-ignore
-      if (typeof window.YT === 'undefined' || typeof window.YT.Player === 'undefined') {
-        // Jika API belum siap, tunggu
-        // @ts-ignore
-        window.onYouTubeIframeAPIReady = createPlayer;
-      } else {
-        // Jika API sudah siap
-        if (playerRef.current && playerRef.current.loadVideoById) {
-          // Jika pemutar sudah ada, cukup muat video baru
-          playerRef.current.loadVideoById(videoId);
+    
+    const loadVideoWithTransition = (newVideoId: string) => {
+      setIsTransitioning(true);
+      setTimeout(() => {
+         // @ts-ignore
+        if (typeof window.YT === 'undefined' || typeof window.YT.Player === 'undefined') {
+           // @ts-ignore
+          window.onYouTubeIframeAPIReady = () => createPlayer(newVideoId);
         } else {
-          // Jika pemutar belum ada, buat pemutar baru
-          createPlayer();
+          if (playerRef.current && playerRef.current.loadVideoById) {
+            playerRef.current.loadVideoById(newVideoId);
+          } else {
+            createPlayer(newVideoId);
+          }
         }
-      }
+        setTimeout(() => setIsTransitioning(false), 500);
+      }, 600); 
+    };
+    
+    if (videoId) {
+        loadVideoWithTransition(videoId);
     } else {
-      // Jika tidak ada videoId, hancurkan pemutar jika ada
-      if (playerRef.current) {
-        playerRef.current.destroy();
-        playerRef.current = null;
-      }
+        if (playerRef.current) {
+            playerRef.current.destroy();
+            playerRef.current = null;
+        }
     }
 
-    // Cleanup: Pastikan pemutar dihancurkan saat komponen unmount
     return () => {
       // @ts-ignore
-      window.onYouTubeIframeAPIReady = null; // Hapus listener global untuk mencegah kebocoran
+      window.onYouTubeIframeAPIReady = null;
     };
-
-  }, [videoId, addToHistory, playNextSong, toast, nowPlaying, isMonitor]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoId]);
 
 
   return (
-    <div className="h-full w-full bg-black flex items-center justify-center">
-        <div id="youtube-player-iframe" className="w-full h-full" style={{ display: nowPlaying ? 'block' : 'none' }} />
-        {!nowPlaying && (
+    <div ref={containerRef} className="h-full w-full bg-black flex items-center justify-center">
+        <div 
+          id="youtube-player-iframe" 
+          className={cn(
+              "w-full h-full transition-opacity duration-700",
+              isTransitioning || !nowPlaying ? "opacity-0" : "opacity-100"
+          )}
+        />
+        {!nowPlaying && !isTransitioning && (
             <div className="text-center text-muted-foreground">
             <Tv2 size={48} className="mx-auto" />
             <p className="mt-4">Pilih lagu untuk diputar</p>
