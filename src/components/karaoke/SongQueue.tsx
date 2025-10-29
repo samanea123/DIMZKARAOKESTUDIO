@@ -41,7 +41,7 @@ export default function SongQueue() {
                 <TableHead className="w-[80px]"></TableHead>
                 <TableHead>Lagu</TableHead>
                 <TableHead>Artis</TableHead>
-                <TableHead className="w-[120px] text-right"></TableHead>
+                <TableHead className="w-[120px] text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -77,31 +77,29 @@ export default function SongQueue() {
                   <TableCell className="text-right">
                     <div className="flex justify-end items-center gap-1">
                       {index > 0 && (
-                        <>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 hover:text-primary"
-                            title="Putar Sekarang"
-                            onClick={() => playSongFromQueue(song.id)}
-                          >
-                            <Play className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 hover:text-primary"
-                            title="Antrikan Berikutnya"
-                            onClick={() => addSongToPlayNext(song)}
-                          >
-                            <SkipForward className="h-4 w-4" />
-                          </Button>
-                        </>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-green-400 hover:text-green-500"
+                          title="Putar Sekarang"
+                          onClick={() => playSongFromQueue(song.id)}
+                        >
+                          <Play className="h-4 w-4" />
+                        </Button>
                       )}
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-8 w-8 hover:text-destructive"
+                        className="h-8 w-8 text-yellow-400 hover:text-yellow-500"
+                        title="Antrikan Berikutnya"
+                        onClick={() => addSongToPlayNext(song)}
+                      >
+                        <SkipForward className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-red-500 hover:text-red-600"
                         title="Hapus dari antrian"
                         onClick={(e) => handleRemoveSong(e, song.id, index === 0)}
                       >
