@@ -6,44 +6,32 @@ import { Loader, Mic, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import SearchResults from "./SearchResults";
+import type { YoutubeVideo } from "@/context/KaraokeContext";
 
 type FilterMode = "karaoke" | "non-karaoke";
-
-export interface YoutubeVideo {
-  id: {
-    videoId: string;
-  };
-  snippet: {
-    title: string;
-    channelTitle: string;
-    thumbnails: {
-      default: {
-        url: string;
-      };
-      medium: {
-        url: string;
-      };
-      high: {
-        url: string;
-      };
-    };
-  };
-}
 
 export default function SongSearch() {
   const [mode, setMode] = useState<FilterMode>("karaoke");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<YoutubeVideo[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
 
   const handleSearch = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!query.trim()) return;
     setLoading(true);
     setResults([]);
+    setSearched(true);
 
     const searchQuery = mode === "karaoke" ? `${query} karaoke` : query;
     const API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
+    if (!API_KEY) {
+      console.error("YouTube API Key is not set.");
+      // You can also show a toast message to the user
+      setLoading(false);
+      return;
+    }
     const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=20&q=${encodeURIComponent(
       searchQuery
     )}&key=${API_KEY}`;
@@ -54,6 +42,7 @@ export default function SongSearch() {
       if (data.items) {
         setResults(data.items);
       } else {
+        console.error("No items found or error in API response", data);
         setResults([]);
       }
     } catch (error) {
@@ -109,6 +98,12 @@ export default function SongSearch() {
       {loading && (
         <div className="flex justify-center items-center p-8">
           <Loader className="animate-spin text-primary" size={48} />
+        </div>
+      )}
+
+      {!loading && searched && results.length === 0 && (
+        <div className="text-center text-muted-foreground p-8">
+          Tidak ada hasil ditemukan. Coba kata kunci lain.
         </div>
       )}
 

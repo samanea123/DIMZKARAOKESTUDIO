@@ -1,17 +1,13 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "../ui/scroll-area";
-
-const queue = [
-  { title: "Bohemian Rhapsody", artist: "Queen", addedBy: "User1" },
-  { title: "I Will Survive", artist: "Gloria Gaynor", addedBy: "User2" },
-  { title: "Hotel California", artist: "Eagles", addedBy: "User1" },
-  { title: "Sweet Caroline", artist: "Neil Diamond", addedBy: "User3" },
-  { title: "Don't Stop Believin'", artist: "Journey", addedBy: "User2" },
-  { title: "Wonderwall", artist: "Oasis", addedBy: "User1" },
-];
+import { useKaraoke } from "@/context/KaraokeContext";
 
 export default function SongQueue() {
+  const { queue } = useKaraoke();
+
   return (
     <Card className="h-full flex flex-col">
       <CardHeader>
@@ -29,12 +25,19 @@ export default function SongQueue() {
             </TableHeader>
             <TableBody>
               {queue.map((song, index) => (
-                <TableRow key={index}>
-                  <TableCell className="font-medium">{song.title}</TableCell>
-                  <TableCell>{song.artist}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">{song.addedBy}</TableCell>
+                <TableRow key={`${song.id.videoId}-${index}`} className={index === 0 ? "bg-primary/10" : ""}>
+                  <TableCell className="font-medium truncate max-w-[150px]">{song.snippet.title}</TableCell>
+                  <TableCell className="truncate max-w-[100px]">{song.snippet.channelTitle}</TableCell>
+                  <TableCell className="text-right text-muted-foreground">User</TableCell>
                 </TableRow>
               ))}
+              {queue.length === 0 && (
+                <TableRow>
+                    <TableCell colSpan={3} className="text-center text-muted-foreground h-24">
+                        Antrian masih kosong.
+                    </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </ScrollArea>
