@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -7,11 +8,11 @@ import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import SearchResults from "./SearchResults";
 import type { YoutubeVideo } from "@/context/KaraokeContext";
+import { useKaraoke } from "@/context/KaraokeContext";
 
-type FilterMode = "karaoke" | "non-karaoke";
 
 export default function SongSearch() {
-  const [mode, setMode] = useState<FilterMode>("karaoke");
+  const { mode, setMode } = useKaraoke();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<YoutubeVideo[]>([]);
   const [loading, setLoading] = useState(false);

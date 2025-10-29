@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,11 +9,12 @@ import { Button } from "../ui/button";
 import { Slider } from "../ui/slider";
 
 export default function MiniMonitor() {
-  const { nowPlaying, playNextSong, playPreviousSong, stopPlayback, history } = useKaraoke();
+  const { nowPlaying, playNextSong, playPreviousSong, stopPlayback, songHistory, addToHistory, mode } = useKaraoke();
   const playerRef = useRef<YT.Player | null>(null);
   const playerDivId = "youtube-player";
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(50);
+  const lastPlayedSongRef = useRef(nowPlaying);
 
   // Load YouTube API and set up player
   useEffect(() => {
@@ -53,6 +55,10 @@ export default function MiniMonitor() {
     } else if (nowPlaying && !playerRef.current && window.YT) {
         createPlayer();
     }
+
+    if(nowPlaying) {
+      lastPlayedSongRef.current = nowPlaying;
+    }
   }, [nowPlaying]);
   
   const createPlayer = () => {
@@ -83,6 +89,9 @@ export default function MiniMonitor() {
             setIsPlaying(false);
           }
           if (event.data === YT.PlayerState.ENDED) {
+            if(lastPlayedSongRef.current) {
+              addToHistory(lastPlayedSongRef.current, mode);
+            }
             playNextSong();
           }
         },
@@ -101,10 +110,16 @@ export default function MiniMonitor() {
   };
 
   const handleStop = () => {
+    if (nowPlaying) {
+      addToHistory(nowPlaying, mode);
+    }
     stopPlayback();
   };
 
   const handleNext = () => {
+    if (nowPlaying) {
+      addToHistory(nowPlaying, mode);
+    }
     playNextSong();
   };
   
@@ -148,7 +163,7 @@ export default function MiniMonitor() {
             </div>
           )}
           <div className="flex items-center justify-center gap-1 md:gap-2 w-full">
-              <Button variant="ghost" size="icon" onClick={handlePrevious} disabled={history.length === 0} className="hover:text-fuchsia-400">
+              <Button variant="ghost" size="icon" onClick={handlePrevious} disabled={songHistory.length === 0} className="hover:text-fuchsia-400">
                   <SkipBack />
               </Button>
               <Button variant="ghost" size="icon" onClick={handlePlayPause} disabled={!nowPlaying} className="hover:text-primary">

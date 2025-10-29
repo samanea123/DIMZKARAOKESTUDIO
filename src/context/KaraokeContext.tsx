@@ -1,7 +1,11 @@
+
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+
+export type FilterMode = "karaoke" | "non-karaoke";
+export type ActiveTab = "home" | "history" | "settings";
 
 export interface YoutubeVideo {
   id: {
@@ -18,9 +22,19 @@ export interface YoutubeVideo {
   };
 }
 
+export interface HistoryEntry extends YoutubeVideo {
+  playedAt: string;
+  mode: FilterMode;
+}
+
+
 interface KaraokeContextType {
   queue: YoutubeVideo[];
-  history: YoutubeVideo[];
+  songHistory: HistoryEntry[];
+  mode: FilterMode;
+  setMode: (mode: FilterMode) => void;
+  activeTab: ActiveTab;
+  setActiveTab: (tab: ActiveTab) => void;
   addSongToQueue: (song: YoutubeVideo) => void;
   removeSongFromQueue: (videoId: string) => void;
   playSongFromQueue: (videoId: string) => void;
@@ -28,15 +42,41 @@ interface KaraokeContextType {
   playPreviousSong: () => void;
   stopPlayback: () => void;
   nowPlaying?: YoutubeVideo;
+  addToHistory: (song: YoutubeVideo, mode: FilterMode) => void;
+  playFromHistory: (song: HistoryEntry) => void;
+  clearHistory: () => void;
 }
 
 const KaraokeContext = createContext<KaraokeContextType | undefined>(undefined);
 
 export function KaraokeProvider({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<YoutubeVideo[]>([]);
-  const [history, setHistory] = useState<YoutubeVideo[]>([]);
+  const [songHistory, setSongHistory] = useState<HistoryEntry[]>([]);
+  const [mode, setMode] = useState<FilterMode>("karaoke");
+  const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const { toast } = useToast();
   
+  useEffect(() => {
+    try {
+        const savedHistory = localStorage.getItem("dimz-karaoke-history");
+        if (savedHistory) {
+            setSongHistory(JSON.parse(savedHistory));
+        }
+    } catch (error) {
+        console.error("Could not load history from localStorage", error);
+        setSongHistory([]);
+    }
+  }, []);
+
+  const updateHistory = (newHistory: HistoryEntry[]) => {
+    setSongHistory(newHistory);
+    try {
+      localStorage.setItem("dimz-karaoke-history", JSON.stringify(newHistory));
+    } catch (error) {
+      console.error("Could not save history to localStorage", error);
+    }
+  };
+
   const addSongToQueue = (song: YoutubeVideo) => {
     if (queue.some(s => s.id.videoId === song.id.videoId)) {
       toast({
@@ -69,10 +109,6 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
 
   const playNextSong = () => {
     setQueue((prevQueue) => {
-      if (prevQueue.length > 0) {
-        const finishedSong = prevQueue[0];
-        setHistory(prevHistory => [finishedSong, ...prevHistory].slice(0, 20)); // Keep last 20 songs
-      }
       if (prevQueue.length <= 1) {
         return [];
       }
@@ -81,19 +117,43 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
 
   const playPreviousSong = () => {
-    if (history.length === 0) return;
-
-    const lastPlayed = history[0];
-    setHistory(prev => prev.slice(1));
+    if (songHistory.length === 0) return;
+    const lastPlayed = songHistory[0];
+    updateHistory(songHistory.slice(1));
     setQueue(prev => [lastPlayed, ...prev]);
   };
 
   const stopPlayback = () => {
-    if (queue.length > 0) {
-        const currentSong = queue[0];
-        setHistory(prev => [currentSong, ...prev].slice(0,20));
-    }
     setQueue([]);
+  };
+
+  const addToHistory = (song: YoutubeVideo, mode: FilterMode) => {
+    const newEntry: HistoryEntry = {
+      ...song,
+      playedAt: new Date().toISOString(),
+      mode: mode,
+    };
+
+    const newHistory = [
+      newEntry, 
+      ...songHistory.filter(item => item.id.videoId !== song.id.videoId)
+    ].slice(0, 50); // Keep last 50 songs
+    
+    updateHistory(newHistory);
+  };
+  
+  const playFromHistory = (song: HistoryEntry) => {
+      addSongToQueue(song);
+      playSongFromQueue(song.id.videoId);
+      addToHistory(song, song.mode); // to update timestamp
+  };
+
+  const clearHistory = () => {
+      updateHistory([]);
+      toast({
+        title: "Riwayat Dihapus",
+        description: "Semua riwayat lagu telah dihapus.",
+      })
   };
 
   const nowPlaying = queue[0];
@@ -101,14 +161,21 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   return (
     <KaraokeContext.Provider value={{ 
         queue, 
-        history,
+        songHistory,
+        mode,
+        setMode,
+        activeTab,
+        setActiveTab,
         addSongToQueue, 
         removeSongFromQueue, 
         playSongFromQueue, 
         playNextSong, 
         playPreviousSong,
         stopPlayback,
-        nowPlaying 
+        nowPlaying,
+        addToHistory,
+        playFromHistory,
+        clearHistory,
     }}>
       {children}
     </KaraokeContext.Provider>
