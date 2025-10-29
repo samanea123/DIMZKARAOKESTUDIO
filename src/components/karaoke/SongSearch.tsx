@@ -20,66 +20,6 @@ export default function SongSearch() {
   const [searched, setSearched] = useState(false);
   const [filter, setFilter] = useState<FilterMode | 'all'>('all');
 
-  const handleSearch = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!query.trim()) return;
-    setLoading(true);
-    setResults([]);
-    setSearched(true);
-
-    const API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
-    if (!API_KEY) {
-      console.error("YouTube API Key is not set.");
-      setLoading(false);
-      return;
-    }
-
-    const fetchFromYoutube = async (searchQuery: string, mode: FilterMode) => {
-      const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=${encodeURIComponent(
-        searchQuery
-      )}&key=${API_KEY}`;
-      const response = await fetch(url);
-      const data = await response.json();
-      if (data.items) {
-        return data.items.map((item: YoutubeVideo) => ({ ...item, mode }));
-      }
-      return [];
-    };
-
-    try {
-      const karaokeQuery = `${query} karaoke`;
-      const originalQuery = query;
-
-      let karaokeResults: SearchResult[] = [];
-      let originalResults: SearchResult[] = [];
-
-      const searches: Promise<SearchResult[]>[] = [];
-
-      if (filter === 'all' || filter === 'karaoke') {
-        searches.push(fetchFromYoutube(karaokeQuery, "karaoke"));
-      }
-      if (filter === 'all' || filter === 'original') {
-        searches.push(fetchFromYoutube(originalQuery, "original"));
-      }
-      
-      const searchResults = await Promise.all(searches);
-      const combinedResults = searchResults.flat();
-      
-      const uniqueResults = Array.from(new Map(combinedResults.map(item => [item.id.videoId, item])).values());
-      
-      setResults(uniqueResults);
-      if (uniqueResults.length === 0) {
-        console.error("No items found or error in API response");
-      }
-
-    } catch (error) {
-      console.error("Error fetching from YouTube API:", error);
-      setResults([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const performSearch = async () => {
     if (!query.trim()) return;
     setLoading(true);
@@ -97,10 +37,17 @@ export default function SongSearch() {
       const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=${encodeURIComponent(
         searchQuery
       )}&key=${API_KEY}`;
-      const response = await fetch(url);
-      const data = await response.json();
-      if (data.items) {
-        return data.items.map((item: YoutubeVideo) => ({ ...item, mode }));
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.items) {
+          return data.items.map((item: YoutubeVideo) => ({ ...item, mode }));
+        }
+        if (data.error) {
+            console.error("YouTube API Error:", data.error.message);
+        }
+      } catch (error) {
+        console.error(`Error fetching ${mode} videos:`, error);
       }
       return [];
     };
