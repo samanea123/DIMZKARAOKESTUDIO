@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "../ui/scroll-area";
 import { useKaraoke } from "@/context/KaraokeContext";
+import Image from "next/image";
 
 export default function SongQueue() {
   const { queue } = useKaraoke();
@@ -18,22 +19,30 @@ export default function SongQueue() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[80px]"></TableHead>
                 <TableHead>Lagu</TableHead>
                 <TableHead>Artis</TableHead>
-                <TableHead className="text-right">Ditambahkan</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {queue.map((song, index) => (
                 <TableRow key={`${song.id.videoId}-${index}`} className={index === 0 ? "bg-primary/10" : ""}>
+                  <TableCell>
+                    <Image
+                      src={song.snippet.thumbnails.default.url}
+                      alt={song.snippet.title}
+                      width={60}
+                      height={45}
+                      className="rounded-md object-cover"
+                    />
+                  </TableCell>
                   <TableCell className="font-medium truncate max-w-[150px]">{song.snippet.title}</TableCell>
                   <TableCell className="truncate max-w-[100px]">{song.snippet.channelTitle}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">User</TableCell>
                 </TableRow>
               ))}
               {queue.length === 0 && (
                 <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground h-24">
+                    <TableCell colSpan={4} className="text-center text-muted-foreground h-24">
                         Antrian masih kosong.
                     </TableCell>
                 </TableRow>
