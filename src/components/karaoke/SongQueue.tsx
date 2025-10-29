@@ -7,17 +7,17 @@ import { ScrollArea } from "../ui/scroll-area";
 import { useKaraoke } from "@/context/KaraokeContext";
 import Image from "next/image";
 import { Button } from "../ui/button";
-import { Play, SkipForward, Trash2 } from "lucide-react";
+import { Loader, Play, SkipForward, Trash2 } from "lucide-react";
 
 export default function SongQueue() {
-  const { queue, playSongFromQueue, playNextSong, removeSongFromQueue, addSongToPlayNext } = useKaraoke();
+  const { queue, isQueueLoading, playSongFromQueue, playNextSong, removeSongFromQueue, addSongToPlayNext } = useKaraoke();
 
-  const handleRemoveSong = (e: React.MouseEvent, videoId: string, isNowPlaying: boolean) => {
+  const handleRemoveSong = (e: React.MouseEvent, docId: string, isNowPlaying: boolean) => {
     e.stopPropagation();
     if (isNowPlaying) {
         playNextSong();
     } else {
-        removeSongFromQueue(videoId);
+        removeSongFromQueue(docId);
     }
   }
 
@@ -44,22 +44,29 @@ export default function SongQueue() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {queue.map((song, index) => (
+              {isQueueLoading && (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 text-center">
+                    <Loader className="mx-auto animate-spin text-primary" />
+                  </TableCell>
+                </TableRow>
+              )}
+              {!isQueueLoading && queue.map((song, index) => (
                 <TableRow 
-                  key={`${song.id.videoId}-${index}`} 
+                  key={song.id} 
                   className={index === 0 ? "bg-primary/10 group" : "group"}
                 >
                   <TableCell>
                     <Image
-                      src={song.snippet.thumbnails.default.url}
-                      alt={song.snippet.title}
+                      src={song.thumbnails.default.url}
+                      alt={song.title}
                       width={60}
                       height={45}
                       className="rounded-md object-cover"
                     />
                   </TableCell>
-                  <TableCell className="font-medium truncate max-w-[150px]">{song.snippet.title}</TableCell>
-                  <TableCell className="truncate max-w-[100px]">{song.snippet.channelTitle}</TableCell>
+                  <TableCell className="font-medium truncate max-w-[150px]">{song.title}</TableCell>
+                  <TableCell className="truncate max-w-[100px]">{song.channelTitle}</TableCell>
                   <TableCell className="text-right">
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex justify-end items-center gap-1">
                       {index > 0 && (
@@ -69,7 +76,7 @@ export default function SongQueue() {
                             variant="ghost"
                             className="h-8 w-8 hover:text-primary"
                             title="Putar Sekarang"
-                            onClick={() => playSongFromQueue(song.id.videoId)}
+                            onClick={() => playSongFromQueue(song.id)}
                           >
                             <Play className="h-4 w-4" />
                           </Button>
@@ -89,7 +96,7 @@ export default function SongQueue() {
                         variant="ghost"
                         className="h-8 w-8"
                         title="Hapus dari antrian"
-                        onClick={(e) => handleRemoveSong(e, song.id.videoId, index === 0)}
+                        onClick={(e) => handleRemoveSong(e, song.id, index === 0)}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -97,7 +104,7 @@ export default function SongQueue() {
                   </TableCell>
                 </TableRow>
               ))}
-              {queue.length === 0 && (
+              {!isQueueLoading && queue.length === 0 && (
                 <TableRow>
                     <TableCell colSpan={4} className="text-center text-muted-foreground h-24">
                         Antrian masih kosong.
@@ -111,3 +118,5 @@ export default function SongQueue() {
     </Card>
   );
 }
+
+    

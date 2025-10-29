@@ -1,8 +1,11 @@
 
 "use client";
 
-import { createContext, useContext, useState, type ReactNode, useEffect } from "react";
+import { createContext, useContext, useState, type ReactNode, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
+import { collection, query, orderBy, doc, deleteDoc, addDoc, serverTimestamp, writeBatch } from "firebase/firestore";
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 export type FilterMode = "karaoke" | "original";
 export type ActiveTab = "home" | "history" | "settings" | "favorites";
@@ -22,9 +25,17 @@ export interface YoutubeVideo {
   };
 }
 
-export interface QueueEntry extends YoutubeVideo {
+export interface QueueEntry {
+    id: string; // Firestore document ID
+    youtubeVideoId: string;
+    title: string;
+    channelTitle: string;
+    thumbnails: YoutubeVideo['snippet']['thumbnails'];
     mode: FilterMode;
+    order: number;
+    addedAt: any; // Firestore Timestamp
 }
+
 
 export interface HistoryEntry extends YoutubeVideo {
   playedAt: string;
@@ -39,14 +50,15 @@ export interface FavoriteEntry extends YoutubeVideo {
 
 interface KaraokeContextType {
   queue: QueueEntry[];
+  isQueueLoading: boolean;
   songHistory: HistoryEntry[];
   favorites: FavoriteEntry[];
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
   addSongToQueue: (song: YoutubeVideo, mode: FilterMode) => void;
   addSongToPlayNext: (song: QueueEntry) => void;
-  removeSongFromQueue: (videoId: string) => void;
-  playSongFromQueue: (videoId: string) => void;
+  removeSongFromQueue: (docId: string) => void;
+  playSongFromQueue: (docId: string) => void;
   playNextSong: () => void;
   playPreviousSong: () => void;
   stopPlayback: () => void;
@@ -63,20 +75,32 @@ interface KaraokeContextType {
 
 const KaraokeContext = createContext<KaraokeContextType | undefined>(undefined);
 
+// Hardcoded user ID for now
+const TEMP_USER_ID = "shared-queue-user";
+
 export function KaraokeProvider({ children }: { children: ReactNode }) {
-  const [queue, setQueue] = useState<QueueEntry[]>([]);
+  const { firestore } = useFirebase();
+  const db = firestore;
   const [songHistory, setSongHistory] = useState<HistoryEntry[]>([]);
   const [favorites, setFavorites] = useState<FavoriteEntry[]>([]);
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [monitorWindow, setMonitorWindow] = useState<Window | null>(null);
   const { toast } = useToast();
+
+  // --- FIREBASE QUEUE SYNC ---
+  const queueQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(
+        collection(db, "users", TEMP_USER_ID, "songQueueItems"), 
+        orderBy("order", "asc")
+    );
+  }, [db]);
+  
+  const { data: queue, isLoading: isQueueLoading } = useCollection<QueueEntry>(queueQuery);
+  // --- END FIREBASE QUEUE SYNC ---
   
   useEffect(() => {
     try {
-        const savedQueue = localStorage.getItem("dimz-karaoke-queue");
-        if (savedQueue) {
-            setQueue(JSON.parse(savedQueue));
-        }
         const savedHistory = localStorage.getItem("dimz-karaoke-history");
         if (savedHistory) {
             setSongHistory(JSON.parse(savedHistory));
@@ -87,20 +111,18 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
         }
     } catch (error) {
         console.error("Could not load data from localStorage", error);
-        setQueue([]);
         setSongHistory([]);
         setFavorites([]);
     }
   }, []);
 
-  const nowPlaying = queue[0];
+  const nowPlaying = queue?.[0];
 
   useEffect(() => {
-    // Automatically open monitor when the first song starts playing
     if (nowPlaying && (!monitorWindow || monitorWindow.closed)) {
       openMonitor();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nowPlaying]);
 
   const openMonitor = () => {
@@ -114,14 +136,6 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateQueue = (newQueue: QueueEntry[]) => {
-    setQueue(newQueue);
-    try {
-      localStorage.setItem("dimz-karaoke-queue", JSON.stringify(newQueue));
-    } catch (error) {
-      console.error("Could not save queue to localStorage", error);
-    }
-  };
 
   const updateHistory = (newHistory: HistoryEntry[]) => {
     setSongHistory(newHistory);
@@ -141,8 +155,9 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addSongToQueue = (song: YoutubeVideo, mode: FilterMode) => {
-    if (queue.some(s => s.id.videoId === song.id.videoId)) {
+  const addSongToQueue = async (song: YoutubeVideo, mode: FilterMode) => {
+    if (!db || !queue) return;
+    if (queue.some(s => s.youtubeVideoId === song.id.videoId)) {
       toast({
         variant: "destructive",
         title: "Lagu Sudah Ada",
@@ -150,101 +165,130 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
       })
       return;
     }
-    const newEntry: QueueEntry = { ...song, mode };
-    updateQueue([...queue, newEntry]);
+    
+    const maxOrder = queue.reduce((max, s) => Math.max(max, s.order), 0);
+    
+    const newEntry = {
+        youtubeVideoId: song.id.videoId,
+        title: song.snippet.title,
+        channelTitle: song.snippet.channelTitle,
+        thumbnails: song.snippet.thumbnails,
+        mode,
+        order: maxOrder + 1,
+        addedAt: serverTimestamp(),
+    };
+    
+    const collectionRef = collection(db, "users", TEMP_USER_ID, "songQueueItems");
+    addDocumentNonBlocking(collectionRef, newEntry);
+
     toast({
       title: "Lagu Ditambahkan",
       description: `${song.snippet.title} telah ditambahkan ke antrian.`,
     })
   };
 
-  const addSongToPlayNext = (song: QueueEntry) => {
-    const newQueue = queue.filter(s => s.id.videoId !== song.id.videoId);
-    if (newQueue.length === 0) {
-      updateQueue([song]);
-    } else {
-      newQueue.splice(1, 0, song);
-      updateQueue(newQueue);
-    }
-     toast({
+  const addSongToPlayNext = async (song: QueueEntry) => {
+    if (!db) return;
+
+    // The song to be played next should have an order between nowPlaying (if it exists) and the next song
+    const newOrder = (nowPlaying?.order || 0) + 0.5;
+
+    const docRef = doc(db, "users", TEMP_USER_ID, "songQueueItems", song.id);
+    updateDocumentNonBlocking(docRef, { order: newOrder });
+
+    toast({
       title: "Antrian Diperbarui",
-      description: `${song.snippet.title} akan diputar berikutnya.`,
-    })
-  }
+      description: `${song.title} akan diputar berikutnya.`,
+    });
+  };
 
-  const playNextFromAnywhere = (song: YoutubeVideo, mode: FilterMode) => {
-    const songInQueue = queue.find(s => s.id.videoId === song.id.videoId);
-    if (songInQueue) {
-      addSongToPlayNext(songInQueue);
-    } else {
-      const newEntry: QueueEntry = { ...song, mode };
-      const newQueue = [...queue];
-       if (newQueue.length === 0) {
-        updateQueue([newEntry]);
+  const playNextFromAnywhere = async (song: YoutubeVideo, mode: FilterMode) => {
+      if (!queue) return;
+      const songInQueue = queue.find(s => s.youtubeVideoId === song.id.videoId);
+      if (songInQueue) {
+          await addSongToPlayNext(songInQueue);
       } else {
-        newQueue.splice(1, 0, newEntry);
-        updateQueue(newQueue);
+          if (!db) return;
+          const newOrder = (nowPlaying?.order || 0) + 0.5;
+          const newEntry = {
+              youtubeVideoId: song.id.videoId,
+              title: song.snippet.title,
+              channelTitle: song.snippet.channelTitle,
+              thumbnails: song.snippet.thumbnails,
+              mode,
+              order: newOrder,
+              addedAt: serverTimestamp(),
+          };
+          const collectionRef = collection(db, "users", TEMP_USER_ID, "songQueueItems");
+          addDocumentNonBlocking(collectionRef, newEntry);
+
+          toast({
+              title: "Antrian Diperbarui",
+              description: `${song.snippet.title} akan diputar berikutnya.`,
+          });
       }
-      toast({
-        title: "Antrian Diperbarui",
-        description: `${song.snippet.title} akan diputar berikutnya.`,
-      });
-    }
   };
 
-  const removeSongFromQueue = (videoId: string) => {
-    updateQueue(queue.filter((song) => song.id.videoId !== videoId));
+  const removeSongFromQueue = (docId: string) => {
+    if (!db) return;
+    const docRef = doc(db, "users", TEMP_USER_ID, "songQueueItems", docId);
+    deleteDocumentNonBlocking(docRef);
   };
 
-  const playSongFromQueue = (videoId: string) => {
-    const songToPlay = queue.find(song => song.id.videoId === videoId);
+  const playSongFromQueue = (docId: string) => {
+    if (!db || !queue) return;
+    const songToPlay = queue.find(s => s.id === docId);
     if (!songToPlay) return;
 
-    const currentSong = queue[0];
-    if (currentSong && currentSong.id.videoId !== songToPlay.id.videoId) {
-      // Don't add to history here, it will be added when the next song truly starts
-    }
+    // To make it play now, we give it an order number smaller than the current `nowPlaying` song.
+    const newOrder = (nowPlaying?.order || 1) - 1;
     
-    const otherSongs = queue.filter(song => song.id.videoId !== videoId);
-    updateQueue([songToPlay, ...otherSongs]);
+    const docRef = doc(db, "users", TEMP_USER_ID, "songQueueItems", docId);
+    updateDocumentNonBlocking(docRef, { order: newOrder });
   };
 
   const playNextSong = () => {
-    if(queue[0]) {
-      addToHistory(queue[0]);
-    }
-    if (queue.length <= 1) {
-      updateQueue([]);
-    } else {
-      updateQueue(queue.slice(1));
+    if (nowPlaying) {
+      addToHistory(nowPlaying);
+      removeSongFromQueue(nowPlaying.id);
     }
   };
 
   const playPreviousSong = () => {
-    if (songHistory.length === 0) return;
-    const lastPlayed = songHistory[0];
-    updateHistory(songHistory.slice(1));
-    const nowPlaying = queue[0];
-    const newQueue = nowPlaying ? [lastPlayed, nowPlaying, ...queue.slice(1)] : [lastPlayed];
-    updateQueue(newQueue);
+    // This is complex with Firestore ordering, would need a more sophisticated history/state management
+    console.warn("Play previous song is not implemented for Firestore-backed queue yet.");
   };
 
   const stopPlayback = () => {
-    if(queue[0]) {
-      addToHistory(queue[0]);
+    if(nowPlaying) {
+      addToHistory(nowPlaying);
     }
-    updateQueue([]);
+    // Delete all songs in the queue
+    if (db && queue) {
+      const batch = writeBatch(db);
+      queue.forEach(song => {
+        const docRef = doc(db, "users", TEMP_USER_ID, "songQueueItems", song.id);
+        batch.delete(docRef);
+      });
+      batch.commit();
+    }
   };
 
   const addToHistory = (song: QueueEntry) => {
-    const newEntry: HistoryEntry = {
-      ...song,
-      playedAt: new Date().toISOString(),
+    const newHistoryEntry: HistoryEntry = {
+        id: { videoId: song.youtubeVideoId },
+        snippet: {
+            title: song.title,
+            channelTitle: song.channelTitle,
+            thumbnails: song.thumbnails,
+        },
+        playedAt: new Date().toISOString(),
+        mode: song.mode,
     };
 
     const newHistory = [
-      newEntry, 
-      ...songHistory.filter(item => item.id.videoId !== song.id.videoId)
+      newHistoryEntry, 
+      ...songHistory.filter(item => item.id.videoId !== song.youtubeVideoId)
     ].slice(0, 50); // Keep last 50 songs
     
     updateHistory(newHistory);
@@ -252,11 +296,6 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   
   const playFromHistory = (song: HistoryEntry) => {
       addSongToQueue(song, song.mode);
-      // Wait a moment for state to update before playing
-      setTimeout(() => {
-        const songInQueue = queue.find(s => s.id.videoId === song.id.videoId) || { ...song };
-        playSongFromQueue(songInQueue.id.videoId)
-      }, 100);
   };
 
   const clearHistory = () => {
@@ -273,7 +312,6 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
 
   const addOrRemoveFavorite = (song: YoutubeVideo, mode: FilterMode) => {
     if (isFavorite(song.id.videoId)) {
-      // Remove from favorites
       const newFavorites = favorites.filter(fav => fav.id.videoId !== song.id.videoId);
       updateFavorites(newFavorites);
       toast({
@@ -281,7 +319,6 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
         description: `${song.snippet.title} telah dihapus dari daftar favorit.`,
       });
     } else {
-      // Add to favorites
       const newEntry: FavoriteEntry = {
         ...song,
         favoritedAt: new Date().toISOString(),
@@ -298,16 +335,13 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
 
   const playFromFavorites = (song: FavoriteEntry) => {
     addSongToQueue(song, song.mode);
-    // Wait a moment for state to update before playing
-    setTimeout(() => {
-        const songInQueue = queue.find(s => s.id.videoId === song.id.videoId) || { ...song };
-        playSongFromQueue(songInQueue.id.videoId)
-      }, 100);
   };
+
 
   return (
     <KaraokeContext.Provider value={{ 
-        queue, 
+        queue: queue || [], 
+        isQueueLoading,
         songHistory,
         favorites,
         activeTab,
@@ -341,3 +375,5 @@ export function useKaraoke() {
   }
   return context;
 }
+
+    

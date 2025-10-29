@@ -10,7 +10,7 @@ export default function VideoPlayer() {
   const { nowPlaying, playNextSong, addToHistory } = useKaraoke();
   const playerRef = useRef<any>(null);
   const { toast } = useToast();
-  const videoId = nowPlaying?.id?.videoId;
+  const videoId = nowPlaying?.youtubeVideoId;
 
   useEffect(() => {
     // Fungsi untuk menangani event
@@ -101,7 +101,7 @@ export default function VideoPlayer() {
       window.onYouTubeIframeAPIReady = null; // Hapus listener global untuk mencegah kebocoran
     };
 
-  }, [videoId, addToHistory, playNextSong, toast]);
+  }, [videoId, addToHistory, playNextSong, toast, nowPlaying]);
 
 
   return (
@@ -116,3 +116,5 @@ export default function VideoPlayer() {
     </div>
   );
 }
+
+    
