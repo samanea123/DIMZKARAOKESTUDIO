@@ -3,10 +3,42 @@
 
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useKaraoke } from "@/context/KaraokeContext";
-import { Music, Pause, Play, SkipBack, SkipForward, StopCircle, Volume1, Volume2, VolumeX } from "lucide-react";
+import { Music, Pause, Play, SkipBack, SkipForward, StopCircle, Volume1, Volume2, VolumeX, Cast } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/button";
 import { Slider } from "../ui/slider";
+import { cn } from "@/lib/utils";
+
+declare global {
+  interface Window {
+    __onGCastApiAvailable?: (isAvailable: boolean) => void;
+    cast?: typeof chrome.cast;
+    chrome?: {
+      cast?: {
+        media: {
+          MediaInfo: new (contentId: string, contentType: string) => chrome.cast.media.MediaInfo;
+          LoadRequest: new (mediaInfo: chrome.cast.media.MediaInfo) => chrome.cast.media.LoadRequest;
+        };
+        ApiConfig: new (
+          sessionRequest: chrome.cast.SessionRequest,
+          sessionListener: (e: chrome.cast.Session) => void,
+          receiverListener: (e: chrome.cast.ReceiverAvailability) => void
+        ) => chrome.cast.ApiConfig;
+        SessionRequest: new (appId: string) => chrome.cast.SessionRequest;
+        initialize: (
+          apiConfig: chrome.cast.ApiConfig,
+          onSuccess: () => void,
+          onError: (e: chrome.cast.Error) => void
+        ) => void;
+        requestSession: (
+          onSuccess: (e: chrome.cast.Session) => void,
+          onError: (e: chrome.cast.Error) => void
+        ) => void;
+      };
+    };
+  }
+}
+
 
 export default function MiniMonitor() {
   const { nowPlaying, playNextSong, playPreviousSong, stopPlayback, songHistory, addToHistory, mode } = useKaraoke();
@@ -15,6 +47,72 @@ export default function MiniMonitor() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(50);
   const lastPlayedSongRef = useRef(nowPlaying);
+  
+  const [castSession, setCastSession] = useState<cast.framework.CastSession | null>(null);
+  const [isCasting, setIsCasting] = useState(false);
+  const castPlayer = useRef<cast.framework.RemotePlayer | null>(null);
+  const castPlayerController = useRef<cast.framework.RemotePlayerController | null>(null);
+
+
+  useEffect(() => {
+    const castContext = cast.framework.CastContext.getInstance();
+    
+    const handleSessionStateChanged = (event: cast.framework.SessionStateEventData) => {
+      const session = castContext.getCurrentSession();
+      if (event.sessionState === cast.framework.SessionState.SESSION_STARTED) {
+        setIsCasting(true);
+        setCastSession(session);
+        if (nowPlaying) {
+          loadMedia(nowPlaying);
+        }
+      } else if (event.sessionState === cast.framework.SessionState.SESSION_ENDED) {
+        setIsCasting(false);
+        setCastSession(null);
+      }
+    };
+    
+    castContext.addEventListener(
+        cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+        handleSessionStateChanged
+    );
+    
+    // Remote Player
+    castPlayer.current = new cast.framework.RemotePlayer();
+    castPlayerController.current = new cast.framework.RemotePlayerController(castPlayer.current);
+
+    return () => {
+      castContext.removeEventListener(
+          cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+          handleSessionStateChanged
+      );
+    }
+  }, [nowPlaying]);
+
+
+  const loadMedia = (song: YoutubeVideo) => {
+    const castSession = cast.framework.CastContext.getInstance().getCurrentSession();
+    if (!castSession) return;
+
+    const mediaInfo = new chrome.cast.media.MediaInfo(song.id.videoId, 'video/youtube');
+    mediaInfo.customData = {
+        "player": "youtube"
+    };
+
+    const request = new chrome.cast.media.LoadRequest(mediaInfo);
+    castSession.loadMedia(request).then(
+      () => { console.log('Load succeed'); },
+      (errorCode: any) => { console.log('Error code: ' + errorCode); }
+    );
+  };
+
+
+  const handleCastButtonClick = () => {
+    const castContext = cast.framework.CastContext.getInstance();
+    castContext.requestSession().then(
+        () => { console.log('Session requested');},
+        (err: any) => {console.error('Request session error', err)}
+    );
+  };
 
   // Load YouTube API and set up player
   useEffect(() => {
@@ -43,7 +141,10 @@ export default function MiniMonitor() {
 
   // Control player based on nowPlaying
   useEffect(() => {
-    if (nowPlaying && playerRef.current?.loadVideoById) {
+    if (isCasting && nowPlaying) {
+      loadMedia(nowPlaying);
+      playerRef.current?.stopVideo(); // Stop local player
+    } else if (nowPlaying && playerRef.current?.loadVideoById) {
       playerRef.current.loadVideoById(nowPlaying.id.videoId);
       playerRef.current.setVolume(volume);
     } else if (!nowPlaying && playerRef.current) {
@@ -59,7 +160,7 @@ export default function MiniMonitor() {
     if(nowPlaying) {
       lastPlayedSongRef.current = nowPlaying;
     }
-  }, [nowPlaying]);
+  }, [nowPlaying, isCasting]);
   
   const createPlayer = () => {
     if (!document.getElementById(playerDivId)) return;
@@ -76,7 +177,7 @@ export default function MiniMonitor() {
       },
       events: {
         onReady: (event) => {
-            if(nowPlaying) {
+            if(nowPlaying && !isCasting) {
                 event.target.loadVideoById(nowPlaying.id.videoId);
                 event.target.setVolume(volume);
                 event.target.playVideo();
@@ -100,6 +201,11 @@ export default function MiniMonitor() {
   };
 
   const handlePlayPause = () => {
+    if (isCasting && castPlayerController.current) {
+        castPlayerController.current.playOrPause();
+        setIsPlaying(!castPlayer.current?.isPaused);
+        return;
+    }
     if (!playerRef.current) return;
     if (isPlaying) {
       playerRef.current.pauseVideo();
@@ -110,6 +216,9 @@ export default function MiniMonitor() {
   };
 
   const handleStop = () => {
+    if (isCasting && castSession) {
+      castSession.stop();
+    }
     if (nowPlaying) {
       addToHistory(nowPlaying, mode);
     }
@@ -130,7 +239,10 @@ export default function MiniMonitor() {
   const handleVolumeChange = (newVolume: number[]) => {
     const vol = newVolume[0];
     setVolume(vol);
-    if (playerRef.current) {
+     if (isCasting && castPlayer.current) {
+      castPlayer.current.volumeLevel = vol / 100;
+      castPlayerController.current?.setVolumeLevel();
+    } else if (playerRef.current) {
       playerRef.current.setVolume(vol);
     }
   };
@@ -140,15 +252,16 @@ export default function MiniMonitor() {
 
   return (
     <Card className="h-full flex flex-col bg-black/50 border-2 border-primary/20 shadow-[0_0_20px_hsl(var(--primary)/0.2)]">
-      <CardHeader>
+      <CardHeader className="flex-row justify-between items-center">
         <CardTitle className="font-headline text-primary/80">Layar Monitor</CardTitle>
+        <google-cast-launcher class={cn(isCasting ? "text-primary" : "")}></google-cast-launcher>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col items-center justify-center text-center p-0 bg-black relative">
-        <div id={playerDivId} className="w-full h-full" />
-        {!nowPlaying && (
+        <div id={playerDivId} className={cn("w-full h-full", { 'hidden': isCasting })} />
+        {(!nowPlaying || isCasting) && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-2xl md:text-3xl lg:text-4xl font-bold leading-loose text-gray-500 font-sans gap-2">
                 <Music size={64} />
-                <p>Pilih lagu untuk memulai</p>
+                <p>{isCasting ? "Memutar di TV" : "Pilih lagu untuk memulai"}</p>
             </div>
         )}
       </CardContent>

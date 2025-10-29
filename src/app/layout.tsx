@@ -1,6 +1,7 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
+import Script from "next/script";
 
 export const metadata: Metadata = {
   title: 'DIMZ KARAOKE STUDIO',
@@ -23,6 +24,8 @@ export default function RootLayout({
       <body className="font-body antialiased">
         {children}
         <Toaster />
+        <Script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></Script>
+        <Script src="/cast_sender.js"></Script>
       </body>
     </html>
   );
