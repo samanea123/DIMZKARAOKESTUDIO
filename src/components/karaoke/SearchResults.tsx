@@ -19,7 +19,7 @@ export default function SearchResults({ videos }: { videos: SearchResult[] }) {
   const { addSongToQueue, addOrRemoveFavorite, isFavorite } = useKaraoke();
 
   return (
-    <ScrollArea className="h-96 w-full">
+    <div className="w-full">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-1">
         {videos.map((video) => (
             <Card key={video.id.videoId} className="overflow-hidden group hover:border-primary transition-colors relative">
@@ -62,6 +62,6 @@ export default function SearchResults({ videos }: { videos: SearchResult[] }) {
             </Card>
         ))}
         </div>
-    </ScrollArea>
+    </div>
   );
 }
