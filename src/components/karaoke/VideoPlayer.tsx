@@ -24,7 +24,10 @@ export default function VideoPlayer() {
         videoId: videoId,
         playerVars: {
           autoplay: 1,
-          controls: 1, // Tampilkan kontrol untuk pengguna
+          controls: 1,
+          fs: 0, // Disable fullscreen button
+          modestbranding: 1,
+          rel: 0,
         },
         events: {
           onReady: (event: any) => {
@@ -55,10 +58,12 @@ export default function VideoPlayer() {
       });
     };
 
-    if (nowPlaying?.id?.videoId) {
-      // @ts-ignore
+    const videoId = nowPlaying?.id?.videoId;
+
+    if (videoId) {
+       // @ts-ignore
       if (window.YT && window.YT.Player) {
-        createPlayer(nowPlaying.id.videoId);
+        createPlayer(videoId);
       } else {
         // Jika API belum siap, tunggu event onYouTubeIframeAPIReady
         // @ts-ignore
@@ -79,11 +84,15 @@ export default function VideoPlayer() {
     // Cleanup function untuk menghancurkan pemutar saat komponen di-unmount
     return () => {
         if (playerRef.current && typeof playerRef.current.destroy === 'function') {
-            playerRef.current.destroy();
+            try {
+                playerRef.current.destroy();
+            } catch (e) {
+                console.error("Error destroying youtube player", e);
+            }
             playerRef.current = null;
         }
     };
-  }, [nowPlaying?.id?.videoId]); // Hanya re-run effect jika videoId berubah
+  }, [nowPlaying?.id?.videoId, addToHistory, playNextSong, toast]);
 
 
   return (
