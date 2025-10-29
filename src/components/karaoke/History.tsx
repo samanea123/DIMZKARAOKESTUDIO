@@ -33,6 +33,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { Badge } from "../ui/badge";
 
 export default function History() {
   const { songHistory, playFromHistory, clearHistory, addOrRemoveFavorite, isFavorite } = useKaraoke();
@@ -91,6 +92,7 @@ export default function History() {
                 <TableHead className="w-[80px]"></TableHead>
                 <TableHead>Lagu</TableHead>
                 <TableHead>Artis</TableHead>
+                <TableHead>Mode</TableHead>
                 <TableHead>Terakhir Diputar</TableHead>
                 <TableHead className="w-[150px] text-right">Aksi</TableHead>
               </TableRow>
@@ -112,6 +114,11 @@ export default function History() {
                   </TableCell>
                   <TableCell className="truncate max-w-[150px]">
                     {song.snippet.channelTitle}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={song.mode === 'karaoke' ? 'default' : 'secondary'} className="uppercase">
+                        {song.mode}
+                    </Badge>
                   </TableCell>
                   <TableCell>{formatDateTime(song.playedAt)}</TableCell>
                   <TableCell className="text-right">
@@ -139,7 +146,7 @@ export default function History() {
               {songHistory.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={6}
                     className="text-center text-muted-foreground h-48"
                   >
                     Riwayat lagu masih kosong.

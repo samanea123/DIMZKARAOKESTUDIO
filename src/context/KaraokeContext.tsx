@@ -4,7 +4,7 @@
 import { createContext, useContext, useState, type ReactNode, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 
-export type FilterMode = "karaoke" | "non-karaoke";
+export type FilterMode = "karaoke" | "original";
 export type ActiveTab = "home" | "history" | "settings" | "favorites";
 
 export interface YoutubeVideo {
@@ -22,6 +22,10 @@ export interface YoutubeVideo {
   };
 }
 
+export interface QueueEntry extends YoutubeVideo {
+    mode: FilterMode;
+}
+
 export interface HistoryEntry extends YoutubeVideo {
   playedAt: string;
   mode: FilterMode;
@@ -34,21 +38,19 @@ export interface FavoriteEntry extends YoutubeVideo {
 
 
 interface KaraokeContextType {
-  queue: YoutubeVideo[];
+  queue: QueueEntry[];
   songHistory: HistoryEntry[];
   favorites: FavoriteEntry[];
-  mode: FilterMode;
-  setMode: (mode: FilterMode) => void;
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
-  addSongToQueue: (song: YoutubeVideo) => void;
+  addSongToQueue: (song: YoutubeVideo, mode: FilterMode) => void;
   removeSongFromQueue: (videoId: string) => void;
   playSongFromQueue: (videoId: string) => void;
   playNextSong: () => void;
   playPreviousSong: () => void;
   stopPlayback: () => void;
-  nowPlaying?: YoutubeVideo;
-  addToHistory: (song: YoutubeVideo, mode: FilterMode) => void;
+  nowPlaying?: QueueEntry;
+  addToHistory: (song: QueueEntry) => void;
   playFromHistory: (song: HistoryEntry) => void;
   clearHistory: () => void;
   addOrRemoveFavorite: (song: YoutubeVideo, mode: FilterMode) => void;
@@ -59,10 +61,9 @@ interface KaraokeContextType {
 const KaraokeContext = createContext<KaraokeContextType | undefined>(undefined);
 
 export function KaraokeProvider({ children }: { children: ReactNode }) {
-  const [queue, setQueue] = useState<YoutubeVideo[]>([]);
+  const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [songHistory, setSongHistory] = useState<HistoryEntry[]>([]);
   const [favorites, setFavorites] = useState<FavoriteEntry[]>([]);
-  const [mode, setMode] = useState<FilterMode>("karaoke");
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const { toast } = useToast();
   
@@ -101,7 +102,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addSongToQueue = (song: YoutubeVideo) => {
+  const addSongToQueue = (song: YoutubeVideo, mode: FilterMode) => {
     if (queue.some(s => s.id.videoId === song.id.videoId)) {
       toast({
         variant: "destructive",
@@ -110,7 +111,8 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
       })
       return;
     }
-    setQueue((prevQueue) => [...prevQueue, song]);
+    const newEntry: QueueEntry = { ...song, mode };
+    setQueue((prevQueue) => [...prevQueue, newEntry]);
     toast({
       title: "Lagu Ditambahkan",
       description: `${song.snippet.title} telah ditambahkan ke antrian.`,
@@ -151,11 +153,10 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     setQueue([]);
   };
 
-  const addToHistory = (song: YoutubeVideo, mode: FilterMode) => {
+  const addToHistory = (song: QueueEntry) => {
     const newEntry: HistoryEntry = {
       ...song,
       playedAt: new Date().toISOString(),
-      mode: mode,
     };
 
     const newHistory = [
@@ -167,9 +168,9 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
   
   const playFromHistory = (song: HistoryEntry) => {
-      addSongToQueue(song);
+      addSongToQueue(song, song.mode);
       playSongFromQueue(song.id.videoId);
-      addToHistory(song, song.mode); // to update timestamp
+      // Don't re-add to history here, it will be added when it finishes playing
   };
 
   const clearHistory = () => {
@@ -210,7 +211,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
 
   const playFromFavorites = (song: FavoriteEntry) => {
-    addSongToQueue(song);
+    addSongToQueue(song, song.mode);
     playSongFromQueue(song.id.videoId);
   };
 
@@ -221,8 +222,6 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
         queue, 
         songHistory,
         favorites,
-        mode,
-        setMode,
         activeTab,
         setActiveTab,
         addSongToQueue, 

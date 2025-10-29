@@ -20,7 +20,7 @@ declare global {
 
 
 export default function MiniMonitor() {
-  const { nowPlaying, playNextSong, playPreviousSong, stopPlayback, songHistory, addToHistory, mode } = useKaraoke();
+  const { nowPlaying, playNextSong, playPreviousSong, stopPlayback, songHistory, addToHistory } = useKaraoke();
   const playerRef = useRef<YT.Player | null>(null);
   const playerDivId = "youtube-player";
   const [isPlaying, setIsPlaying] = useState(false);
@@ -148,7 +148,7 @@ export default function MiniMonitor() {
         // Handle auto-next when song finishes on cast device
         if (mediaSessionRef.current.idleReason === 'FINISHED' && mediaSessionRef.current.playerState === 'IDLE') {
           if(lastPlayedSongRef.current) {
-            addToHistory(lastPlayedSongRef.current, mode);
+            addToHistory(lastPlayedSongRef.current);
           }
           playNextSong();
         }
@@ -235,7 +235,7 @@ export default function MiniMonitor() {
           else if (event.data !== window.YT.PlayerState.BUFFERING) setIsPlaying(false);
           
           if (event.data === window.YT.PlayerState.ENDED) {
-            if(lastPlayedSongRef.current) addToHistory(lastPlayedSongRef.current, mode);
+            if(lastPlayedSongRef.current) addToHistory(lastPlayedSongRef.current);
             playNextSong();
           }
         },
@@ -270,14 +270,14 @@ export default function MiniMonitor() {
       );
     }
     if (nowPlaying) {
-      addToHistory(nowPlaying, mode);
+      addToHistory(nowPlaying);
     }
     stopPlayback();
   };
 
   const handleNext = () => {
     if (nowPlaying) {
-      addToHistory(nowPlaying, mode);
+      addToHistory(nowPlaying);
     }
     playNextSong();
   };
