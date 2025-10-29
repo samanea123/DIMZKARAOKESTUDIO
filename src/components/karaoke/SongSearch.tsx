@@ -2,14 +2,67 @@
 
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Mic, Search } from "lucide-react";
+import { Loader, Mic, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
+import SearchResults from "./SearchResults";
 
 type FilterMode = "karaoke" | "non-karaoke";
 
+export interface YoutubeVideo {
+  id: {
+    videoId: string;
+  };
+  snippet: {
+    title: string;
+    channelTitle: string;
+    thumbnails: {
+      default: {
+        url: string;
+      };
+      medium: {
+        url: string;
+      };
+      high: {
+        url: string;
+      };
+    };
+  };
+}
+
 export default function SongSearch() {
   const [mode, setMode] = useState<FilterMode>("karaoke");
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<YoutubeVideo[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const handleSearch = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+    setLoading(true);
+    setResults([]);
+
+    const searchQuery = mode === "karaoke" ? `${query} karaoke` : query;
+    const API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=20&q=${encodeURIComponent(
+      searchQuery
+    )}&key=${API_KEY}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.items) {
+        setResults(data.items);
+      } else {
+        setResults([]);
+      }
+    } catch (error) {
+      console.error("Error fetching from YouTube API:", error);
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="w-full max-w-xl mx-auto flex flex-col gap-4">
@@ -39,17 +92,27 @@ export default function SongSearch() {
           NON KARAOKE
         </Button>
       </div>
-      <div className="relative w-full">
+      <form onSubmit={handleSearch} className="relative w-full">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
         <Input
           type="search"
           placeholder="Cari lagu atau artis..."
           className="pl-12 pr-12 h-14 text-lg bg-card border-2 border-border focus:border-primary focus:ring-primary/50"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
         />
-        <button className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors">
+        <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors">
           <Mic />
         </button>
-      </div>
+      </form>
+
+      {loading && (
+        <div className="flex justify-center items-center p-8">
+          <Loader className="animate-spin text-primary" size={48} />
+        </div>
+      )}
+
+      {!loading && results.length > 0 && <SearchResults videos={results} />}
     </div>
   );
 }
