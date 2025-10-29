@@ -142,8 +142,9 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     if (!songToPlay) return;
 
     // Add currently playing song to history if there is one
-    if (nowPlaying) {
-      addToHistory(nowPlaying);
+    const currentSong = queue[0];
+    if (currentSong && currentSong.id.videoId !== songToPlay.id.videoId) {
+      addToHistory(currentSong);
     }
     
     const otherSongs = queue.filter(song => song.id.videoId !== videoId);
@@ -151,9 +152,6 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
 
   const playNextSong = () => {
-    if (nowPlaying) {
-      addToHistory(nowPlaying);
-    }
     if (queue.length <= 1) {
       updateQueue([]);
     } else {
@@ -165,10 +163,15 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     if (songHistory.length === 0) return;
     const lastPlayed = songHistory[0];
     updateHistory(songHistory.slice(1));
-    updateQueue([lastPlayed, ...queue]);
+    const nowPlaying = queue[0];
+    const newQueue = nowPlaying ? [lastPlayed, nowPlaying, ...queue.slice(1)] : [lastPlayed];
+    updateQueue(newQueue);
   };
 
   const stopPlayback = () => {
+    if(queue[0]) {
+      addToHistory(queue[0]);
+    }
     updateQueue([]);
   };
 
@@ -189,7 +192,10 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   const playFromHistory = (song: HistoryEntry) => {
       addSongToQueue(song, song.mode);
       // Wait a moment for state to update before playing
-      setTimeout(() => playSongFromQueue(song.id.videoId), 100);
+      setTimeout(() => {
+        const songInQueue = queue.find(s => s.id.videoId === song.id.videoId) || { ...song };
+        playSongFromQueue(songInQueue.id.videoId)
+      }, 100);
   };
 
   const clearHistory = () => {
@@ -232,54 +238,13 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   const playFromFavorites = (song: FavoriteEntry) => {
     addSongToQueue(song, song.mode);
     // Wait a moment for state to update before playing
-    setTimeout(() => playSongFromQueue(song.id.videoId), 100);
+    setTimeout(() => {
+        const songInQueue = queue.find(s => s.id.videoId === song.id.videoId) || { ...song };
+        playSongFromQueue(songInQueue.id.videoId)
+      }, 100);
   };
 
   const nowPlaying = queue[0];
-  
-  // YouTube IFrame API integration
-  useEffect(() => {
-    // If there's a song playing, listen for it to end.
-    if (!nowPlaying) return;
-
-    const onPlayerStateChange = (event: any) => {
-        // event.data === 0 means video ended
-        if (event.data === 0) {
-            playNextSong();
-        }
-    };
-    
-    const onPlayerError = (event: any) => {
-        console.error("YT Player Error:", event.data);
-        toast({
-            variant: "destructive",
-            title: "Video Error",
-            description: `Tidak dapat memutar video. Melompat ke lagu berikutnya.`,
-        });
-        playNextSong();
-    }
-
-    const intervalId = setInterval(() => {
-        // @ts-ignore
-        if (window.YT && window.YT.Player) {
-            // @ts-ignore
-            const player = new window.YT.Player('youtube-player', {
-                events: {
-                    'onStateChange': onPlayerStateChange,
-                    'onError': onPlayerError,
-                }
-            });
-            clearInterval(intervalId);
-        }
-    }, 100);
-
-
-    return () => {
-        clearInterval(intervalId);
-    };
-
-  }, [nowPlaying?.id.videoId]);
-
 
   return (
     <KaraokeContext.Provider value={{ 
