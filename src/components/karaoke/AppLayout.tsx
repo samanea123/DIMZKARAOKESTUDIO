@@ -6,7 +6,8 @@ import {
   Home,
   Star,
   Settings,
-  History as HistoryIcon
+  History as HistoryIcon,
+  Monitor
 } from "lucide-react";
 import type { ReactNode } from "react";
 import {
