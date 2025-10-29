@@ -11,7 +11,7 @@ import { Loader, Play, SkipForward, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function SongQueue() {
-  const { queue, isQueueLoading, playSongFromQueue, playNextSong, removeSongFromQueue, addSongToPlayNext } = useKaraoke();
+  const { queue, isQueueLoading, playSongFromQueue, playNextSong, removeSongFromQueue, addSongToPlayNext, nowPlaying } = useKaraoke();
 
   const handleRemoveSong = (e: React.MouseEvent, docId: string, isNowPlaying: boolean) => {
     e.stopPropagation();
@@ -121,3 +121,4 @@ export default function SongQueue() {
     </Card>
   );
 }
+
