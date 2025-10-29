@@ -11,6 +11,7 @@ import TopHits from "@/components/karaoke/TopHits";
 import { KaraokeProvider, useKaraoke } from "@/context/KaraokeContext";
 import VideoPlayer from "@/components/karaoke/VideoPlayer";
 import { Separator } from "@/components/ui/separator";
+import CastButton from "@/components/karaoke/CastButton";
 
 function KaraokeContent() {
   const { activeTab } = useKaraoke();
@@ -27,7 +28,10 @@ function KaraokeContent() {
               <TopHits />
               <div className="flex-1 grid grid-cols-1 xl:grid-cols-2 gap-6 min-h-[400px]">
                 <div className="flex flex-col">
-                  <h2 className="text-xl font-headline font-semibold mb-2 text-primary">Layar Monitor</h2>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h2 className="text-xl font-headline font-semibold text-primary">Layar Monitor</h2>
+                    <CastButton />
+                  </div>
                   <div className="flex-1 rounded-lg overflow-hidden border">
                     <VideoPlayer />
                   </div>
