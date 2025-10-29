@@ -4,7 +4,7 @@
 import { createContext, useContext, useState, type ReactNode, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy, doc, writeBatch, serverTimestamp } from "firebase/firestore";
+import { collection, query, orderBy, doc, writeBatch, serverTimestamp, getDocs } from "firebase/firestore";
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import type { UseCollectionResult } from "@/firebase/firestore/use-collection";
 import { useCollection } from "@/firebase";
@@ -30,7 +30,7 @@ export interface YoutubeVideo {
 export interface QueueEntry {
     id: string; // Firestore document ID
     youtubeVideoId: string;
-    videoUrl: string; // <<< Ditambahkan
+    videoUrl: string;
     title: string;
     channelTitle: string;
     thumbnails: YoutubeVideo['snippet']['thumbnails'];
@@ -195,7 +195,8 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   const addSongToPlayNext = async (song: QueueEntry) => {
     if (!db || !queue || !user) return;
     
-    const newOrder = nowPlaying ? nowPlaying.order + 0.5 : 1.5;
+    // Jika ada lagu yang sedang diputar, letakkan setelahnya. Jika tidak, letakkan di urutan kedua.
+    const newOrder = nowPlaying ? nowPlaying.order + 0.5 : 2;
 
     const docRef = doc(db, "users", user.uid, "songQueueItems", song.id);
     updateDocumentNonBlocking(docRef, { order: newOrder });
@@ -212,7 +213,8 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
       if (songInQueue) {
           await addSongToPlayNext(songInQueue);
       } else {
-          const newOrder = nowPlaying ? nowPlaying.order + 0.5 : 1.5;
+          // Jika ada lagu yang sedang diputar, letakkan setelahnya. Jika tidak, letakkan di urutan kedua.
+          const newOrder = nowPlaying ? nowPlaying.order + 0.5 : 2;
           const newEntry = {
               youtubeVideoId: song.id.videoId,
               videoUrl: `https://www.youtube.com/embed/${song.id.videoId}`,
@@ -245,15 +247,16 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     const songToPlay = queue.find(s => s.id === docId);
     if (!songToPlay) return;
 
+    // Jika lagu sudah diputar, tidak perlu lakukan apa-apa, VideoPlayer akan handle replay
     if (nowPlaying?.id === docId) {
-        // This is handled inside VideoPlayer to restart the video.
-        // We just need to notify it. A simple way is to re-set the state,
-        // but the video player effect already depends on videoId. 
-        // Forcing a replay can be done by changing a key or calling a player method directly.
-        return;
+      // VideoPlayer will handle this internally if needed.
+      // Forcing a re-render by changing context state is an option if direct player manipulation is not preferred.
+      return;
     }
 
-    const newOrder = (nowPlaying?.order ?? 1) - 1;
+    // Jika tidak ada lagu yang sedang diputar, set lagu ini sebagai lagu pertama
+    // Jika ada, set ordernya lebih kecil dari lagu yang sedang diputar
+    const newOrder = nowPlaying ? nowPlaying.order - 1 : new Date().getTime();
     
     const docRef = doc(db, "users", user.uid, "songQueueItems", docId);
     updateDocumentNonBlocking(docRef, { order: newOrder });
@@ -271,17 +274,21 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     console.warn("Play previous song is not implemented for Firestore-backed queue yet.");
   };
 
-  const stopPlayback = () => {
+  const stopPlayback = async () => {
     if(nowPlaying) {
       addToHistory(nowPlaying);
     }
-    if (db && queue && user) {
+    if (db && user) {
+      // Get all docs and delete in a batch
+      const collectionRef = collection(db, "users", user.uid, "songQueueItems");
+      const snapshot = await getDocs(collectionRef);
+      if(snapshot.empty) return;
+      
       const batch = writeBatch(db);
-      queue.forEach(song => {
-        const docRef = doc(db, "users", user.uid, "songQueueItems", song.id);
-        batch.delete(docRef);
+      snapshot.forEach(docSnap => {
+        batch.delete(docSnap.ref);
       });
-      batch.commit();
+      await batch.commit();
     }
   };
 
@@ -386,5 +393,3 @@ export function useKaraoke() {
   }
   return context;
 }
-
-    
