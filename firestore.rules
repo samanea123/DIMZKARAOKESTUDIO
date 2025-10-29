@@ -1,88 +1,99 @@
 /**
- * @fileoverview Firestore Security Rules for the karaoke application.
+ * @fileoverview Firestore Security Rules for the Karaoke System.
  *
  * Core Philosophy:
- * This ruleset enforces a user-ownership model for song queue items,
- * allowing users to manage their own queues. Song data is publicly readable,
- * but only the application can modify it. User profiles are also owner-only.
+ * This ruleset enforces a strict user-ownership model for song queue items,
+ * allowing users to manage their own queues while providing public read access
+ * to song metadata. It leverages path-based authorization and data
+ * denormalization to minimize reads and maximize security.
  *
  * Data Structure:
- * - /songs/{songId}: Public collection of song metadata.
- * - /users/{userId}: Stores user profiles.
- * - /users/{userId}/songQueueItems/{songQueueItemId}: User-specific song queues.
+ * - /songs/{songId}: Stores public song metadata.
+ * - /users/{userId}: Stores user profile information.
+ * - /users/{userId}/songQueueItems/{songQueueItemId}: Stores user-specific song queue items.
  *
  * Key Security Decisions:
- * - Public read access to song metadata for easy discoverability.
- * - Strict user ownership of song queue items, enforced via path-based rules.
- * - User profiles are private and only accessible to the owning user.
- * - No user listing is allowed.
+ * - Public read access to song metadata is allowed.
+ * - Users can only manage their own song queue items.
+ * - Listing song queue items is restricted to the owner.
+ * - Data validation is limited to authorization-critical fields for prototyping.
  *
  * Denormalization for Authorization:
- * - Path-based ownership in /users/{userId}/songQueueItems/{songQueueItemId}
- *   removes the need for get() calls to verify ownership.
+ * - SongQueueItems are stored in user-specific subcollections (`/users/{userId}/songQueueItems/{songQueueItemId}`),
+ *   eliminating the need for `get()` calls to verify ownership. The `userId` is implicit in the path.
+ *
+ * Structural Segregation:
+ * - User-specific song queue items are stored in a private subcollection
+ *   (`/users/{userId}/songQueueItems/{songQueueItemId}`), enabling secure `list` operations.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows anyone to read song metadata, but restricts modifications.
+     * @description Allows public read access to song metadata. Only the owner can create, update, or delete songs.
      * @path /songs/{songId}
-     * @allow (get, list): if true
-     * @deny (create, update, delete): if false
-     * @principle Public read, application-only writes for song data.
+     * @allow get, list: if true;
+     * @deny create, update, delete: if false; // TODO: Add owner validation if writes are allowed.
+     * @principle Allows public read access to songs.
      */
     match /songs/{songId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create, update, delete: if false; // TODO: Add owner validation if writes are allowed.
     }
 
     /**
-     * @description Manages user profiles. Only the authenticated user can read and write their own profile.
+     * @description Allows a user to read and write their own user profile.
      * @path /users/{userId}
-     * @allow (create): if isSignedIn() && isOwner(userId);
-     * @allow (get, update, delete): if isOwner(userId);
-     * @deny (list): if false;
-     * @deny (create): if !isSignedIn() || !isOwner(userId);
+     * @allow get: if isSignedIn() && isOwner(userId);
+     * @allow list: if false;
+     * @allow create: if isSignedIn() && isOwner(userId);
+     * @allow update: if isSignedIn() && isOwner(userId);
+     * @allow delete: if false; // User deletion is not allowed.
+     * @deny get: if !isSignedIn() || !isOwner(userId);
+     * @deny create: if !isSignedIn() || !isOwner(userId);
+     * @deny update: if !isSignedIn() || !isOwner(userId);
      * @principle Enforces document ownership for user profiles.
      */
     match /users/{userId} {
-      allow get, update, delete: if isOwner(userId);
+      allow get: if isSignedIn() && isOwner(userId);
       allow list: if false;
       allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if false; // User deletion is not allowed.
     }
 
     /**
-     * @description Manages song queue items for each user. Only the owner (user from the path) can manage the queue.
+     * @description Allows a user to manage their own song queue items.
      * @path /users/{userId}/songQueueItems/{songQueueItemId}
-     * @allow (create, get, list, update, delete): if isOwner(userId)
-     * @deny (create, get, list, update, delete): if !isOwner(userId)
-     * @principle Path-based ownership ensures only the owning user can manage their queue.
+     * @allow get: if isSignedIn() && isOwner(userId);
+     * @allow list: if isSignedIn() && isOwner(userId);
+     * @allow create: if isSignedIn() && isOwner(userId);
+     * @allow update: if isSignedIn() && isExistingOwner(userId);
+     * @allow delete: if isSignedIn() && isExistingOwner(userId);
+     * @deny create: if !isSignedIn() || !isOwner(userId);
+     * @deny update: if !isSignedIn() || !isExistingOwner(userId);
+     * @deny delete: if !isSignedIn() || !isExistingOwner(userId);
+     * @principle Enforces document ownership for song queue items.
      */
     match /users/{userId}/songQueueItems/{songQueueItemId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && resource != null;
-      allow delete: if isOwner(userId) && resource != null;
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
     }
 
-    // --- Helper Functions ---
-
-    /**
-     * @description Checks if the request is authenticated.
-     * @return {bool} True if the request is authenticated, false otherwise.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the authenticated user ID matches the provided user ID.
-     * @param {string} userId The user ID to compare against.
-     * @return {bool} True if the user ID matches, false otherwise.
-     */
     function isOwner(userId) {
       return request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+      return isSignedIn() && isOwner(userId) && resource != null;
     }
   }
 }
