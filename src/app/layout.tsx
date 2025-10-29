@@ -24,8 +24,8 @@ export default function RootLayout({
       <body className="font-body antialiased">
         {children}
         <Toaster />
+        <Script src="https://www.youtube.com/iframe_api" strategy="beforeInteractive"></Script>
         <Script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1" strategy="beforeInteractive"></Script>
-        <Script src="/cast_sender.js" strategy="lazyOnload"></Script>
       </body>
     </html>
   );

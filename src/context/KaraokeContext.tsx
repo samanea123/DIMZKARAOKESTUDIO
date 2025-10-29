@@ -69,6 +69,10 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   
   useEffect(() => {
     try {
+        const savedQueue = localStorage.getItem("dimz-karaoke-queue");
+        if (savedQueue) {
+            setQueue(JSON.parse(savedQueue));
+        }
         const savedHistory = localStorage.getItem("dimz-karaoke-history");
         if (savedHistory) {
             setSongHistory(JSON.parse(savedHistory));
@@ -79,10 +83,20 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
         }
     } catch (error) {
         console.error("Could not load data from localStorage", error);
+        setQueue([]);
         setSongHistory([]);
         setFavorites([]);
     }
   }, []);
+
+  const updateQueue = (newQueue: QueueEntry[]) => {
+    setQueue(newQueue);
+    try {
+      localStorage.setItem("dimz-karaoke-queue", JSON.stringify(newQueue));
+    } catch (error) {
+      console.error("Could not save queue to localStorage", error);
+    }
+  };
 
   const updateHistory = (newHistory: HistoryEntry[]) => {
     setSongHistory(newHistory);
@@ -112,7 +126,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
       return;
     }
     const newEntry: QueueEntry = { ...song, mode };
-    setQueue((prevQueue) => [...prevQueue, newEntry]);
+    updateQueue([...queue, newEntry]);
     toast({
       title: "Lagu Ditambahkan",
       description: `${song.snippet.title} telah ditambahkan ke antrian.`,
@@ -120,37 +134,42 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
 
   const removeSongFromQueue = (videoId: string) => {
-    setQueue((prevQueue) => prevQueue.filter((song) => song.id.videoId !== videoId));
+    updateQueue(queue.filter((song) => song.id.videoId !== videoId));
   };
 
   const playSongFromQueue = (videoId: string) => {
-    setQueue((prevQueue) => {
-      const songToPlay = prevQueue.find(song => song.id.videoId === videoId);
-      if (!songToPlay) return prevQueue;
+    const songToPlay = queue.find(song => song.id.videoId === videoId);
+    if (!songToPlay) return;
 
-      const otherSongs = prevQueue.filter(song => song.id.videoId !== videoId);
-      return [songToPlay, ...otherSongs];
-    });
+    // Add currently playing song to history if there is one
+    if (nowPlaying) {
+      addToHistory(nowPlaying);
+    }
+    
+    const otherSongs = queue.filter(song => song.id.videoId !== videoId);
+    updateQueue([songToPlay, ...otherSongs]);
   };
 
   const playNextSong = () => {
-    setQueue((prevQueue) => {
-      if (prevQueue.length <= 1) {
-        return [];
-      }
-      return prevQueue.slice(1);
-    });
+    if (nowPlaying) {
+      addToHistory(nowPlaying);
+    }
+    if (queue.length <= 1) {
+      updateQueue([]);
+    } else {
+      updateQueue(queue.slice(1));
+    }
   };
 
   const playPreviousSong = () => {
     if (songHistory.length === 0) return;
     const lastPlayed = songHistory[0];
     updateHistory(songHistory.slice(1));
-    setQueue(prev => [lastPlayed, ...prev]);
+    updateQueue([lastPlayed, ...queue]);
   };
 
   const stopPlayback = () => {
-    setQueue([]);
+    updateQueue([]);
   };
 
   const addToHistory = (song: QueueEntry) => {
@@ -169,8 +188,8 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   
   const playFromHistory = (song: HistoryEntry) => {
       addSongToQueue(song, song.mode);
-      playSongFromQueue(song.id.videoId);
-      // Don't re-add to history here, it will be added when it finishes playing
+      // Wait a moment for state to update before playing
+      setTimeout(() => playSongFromQueue(song.id.videoId), 100);
   };
 
   const clearHistory = () => {
@@ -212,10 +231,55 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
 
   const playFromFavorites = (song: FavoriteEntry) => {
     addSongToQueue(song, song.mode);
-    playSongFromQueue(song.id.videoId);
+    // Wait a moment for state to update before playing
+    setTimeout(() => playSongFromQueue(song.id.videoId), 100);
   };
 
   const nowPlaying = queue[0];
+  
+  // YouTube IFrame API integration
+  useEffect(() => {
+    // If there's a song playing, listen for it to end.
+    if (!nowPlaying) return;
+
+    const onPlayerStateChange = (event: any) => {
+        // event.data === 0 means video ended
+        if (event.data === 0) {
+            playNextSong();
+        }
+    };
+    
+    const onPlayerError = (event: any) => {
+        console.error("YT Player Error:", event.data);
+        toast({
+            variant: "destructive",
+            title: "Video Error",
+            description: `Tidak dapat memutar video. Melompat ke lagu berikutnya.`,
+        });
+        playNextSong();
+    }
+
+    const intervalId = setInterval(() => {
+        // @ts-ignore
+        if (window.YT && window.YT.Player) {
+            // @ts-ignore
+            const player = new window.YT.Player('youtube-player', {
+                events: {
+                    'onStateChange': onPlayerStateChange,
+                    'onError': onPlayerError,
+                }
+            });
+            clearInterval(intervalId);
+        }
+    }, 100);
+
+
+    return () => {
+        clearInterval(intervalId);
+    };
+
+  }, [nowPlaying?.id.videoId]);
+
 
   return (
     <KaraokeContext.Provider value={{ 

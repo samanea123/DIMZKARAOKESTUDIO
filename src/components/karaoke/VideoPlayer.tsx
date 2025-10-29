@@ -10,8 +10,10 @@ export default function VideoPlayer() {
   const { nowPlaying, playNextSong, addToHistory } = useKaraoke();
 
   useEffect(() => {
+    // This is where Chromecast logic would go.
+    // For now, it just plays in the iframe.
     if (nowPlaying) {
-      // Logic for Chromecast can be added here
+      // Example: `cast.framework.CastContext.getInstance().getCurrentSession()?.loadMedia(...)`
     }
   }, [nowPlaying]);
 
@@ -22,33 +24,42 @@ export default function VideoPlayer() {
     playNextSong();
   };
 
-  const handleVideoError = () => {
-    // If there's an error (e.g., video is private), play the next song
+  const handleVideoError = (e: React.SyntheticEvent<HTMLIFrameElement, Event>) => {
+    console.error("Video player error:", e);
+    // If there's an error (e.g., video is private or removed), play the next song
+    toast({
+      variant: "destructive",
+      title: "Video Error",
+      description: "Video tidak dapat diputar, melompat ke lagu berikutnya.",
+    });
     playNextSong();
   };
 
   return (
-    <Card className="h-full flex flex-col rounded-none border-0 border-b">
-      <CardContent className="flex-1 p-0 flex items-center justify-center bg-black relative">
-        {nowPlaying ? (
-          <iframe
-            key={nowPlaying.id.videoId}
-            className="w-full h-full"
-            src={`https://www.youtube.com/embed/${nowPlaying.id.videoId}?autoplay=1`}
-            title="YouTube video player"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            onEnded={handleVideoEnd}
-            onError={handleVideoError}
-          ></iframe>
-        ) : (
-          <div className="text-center text-muted-foreground">
-            <Tv2 size={48} className="mx-auto" />
-            <p className="mt-4">Pilih lagu untuk diputar</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <div className="h-full w-full bg-black flex items-center justify-center">
+      {nowPlaying ? (
+        <iframe
+          key={nowPlaying.id.videoId}
+          id="youtube-player"
+          className="w-full h-full"
+          src={`https://www.youtube.com/embed/${nowPlaying.id.videoId}?autoplay=1&enablejsapi=1&origin=${window.location.origin}`}
+          title="YouTube video player"
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        ></iframe>
+      ) : (
+        <div className="text-center text-muted-foreground">
+          <Tv2 size={48} className="mx-auto" />
+          <p className="mt-4">Pilih lagu untuk diputar</p>
+        </div>
+      )}
+    </div>
   );
 }
+
+// Dummy toast for the component since useToast is not available here directly
+// In a real app, you might pass toast down or use a global error handler.
+const toast = (options: { variant: string; title: string; description: string; }) => {
+  console.log(`Toast: ${options.title} - ${options.description}`);
+};

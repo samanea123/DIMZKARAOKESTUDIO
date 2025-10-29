@@ -10,7 +10,7 @@ export default function SongQueue() {
   const { queue, playSongFromQueue } = useKaraoke();
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card className="h-full flex flex-col bg-transparent xl:bg-card">
       <CardHeader>
         <CardTitle className="font-headline">Daftar Antrian</CardTitle>
       </CardHeader>
@@ -29,7 +29,7 @@ export default function SongQueue() {
                 <TableRow 
                   key={`${song.id.videoId}-${index}`} 
                   className={index === 0 ? "bg-primary/10" : "cursor-pointer hover:bg-primary/5"}
-                  onClick={() => playSongFromQueue(song.id.videoId)}
+                  onClick={() => index > 0 && playSongFromQueue(song.id.videoId)}
                 >
                   <TableCell>
                     <Image
