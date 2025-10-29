@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, type ReactNode } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 export interface YoutubeVideo {
   id: {
@@ -21,6 +22,7 @@ interface KaraokeContextType {
   queue: YoutubeVideo[];
   addSongToQueue: (song: YoutubeVideo) => void;
   removeSongFromQueue: (videoId: string) => void;
+  playSongFromQueue: (videoId: string) => void;
   nowPlaying?: YoutubeVideo;
 }
 
@@ -28,19 +30,41 @@ const KaraokeContext = createContext<KaraokeContextType | undefined>(undefined);
 
 export function KaraokeProvider({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<YoutubeVideo[]>([]);
+  const { toast } = useToast();
   
   const addSongToQueue = (song: YoutubeVideo) => {
+    if (queue.some(s => s.id.videoId === song.id.videoId)) {
+      toast({
+        title: "Lagu Sudah Ada",
+        description: `${song.snippet.title} sudah ada di dalam antrian.`,
+      })
+      return;
+    }
     setQueue((prevQueue) => [...prevQueue, song]);
+    toast({
+      title: "Lagu Ditambahkan",
+      description: `${song.snippet.title} telah ditambahkan ke antrian.`,
+    })
   };
 
   const removeSongFromQueue = (videoId: string) => {
     setQueue((prevQueue) => prevQueue.filter((song) => song.id.videoId !== videoId));
   };
 
+  const playSongFromQueue = (videoId: string) => {
+    setQueue((prevQueue) => {
+      const songToPlay = prevQueue.find(song => song.id.videoId === videoId);
+      if (!songToPlay) return prevQueue;
+
+      const otherSongs = prevQueue.filter(song => song.id.videoId !== videoId);
+      return [songToPlay, ...otherSongs];
+    });
+  };
+
   const nowPlaying = queue[0];
 
   return (
-    <KaraokeContext.Provider value={{ queue, addSongToQueue, removeSongFromQueue, nowPlaying }}>
+    <KaraokeContext.Provider value={{ queue, addSongToQueue, removeSongFromQueue, playSongFromQueue, nowPlaying }}>
       {children}
     </KaraokeContext.Provider>
   );

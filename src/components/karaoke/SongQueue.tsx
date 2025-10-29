@@ -7,7 +7,7 @@ import { useKaraoke } from "@/context/KaraokeContext";
 import Image from "next/image";
 
 export default function SongQueue() {
-  const { queue } = useKaraoke();
+  const { queue, playSongFromQueue } = useKaraoke();
 
   return (
     <Card className="h-full flex flex-col">
@@ -26,7 +26,11 @@ export default function SongQueue() {
             </TableHeader>
             <TableBody>
               {queue.map((song, index) => (
-                <TableRow key={`${song.id.videoId}-${index}`} className={index === 0 ? "bg-primary/10" : ""}>
+                <TableRow 
+                  key={`${song.id.videoId}-${index}`} 
+                  className={index === 0 ? "bg-primary/10" : "cursor-pointer hover:bg-primary/5"}
+                  onClick={() => playSongFromQueue(song.id.videoId)}
+                >
                   <TableCell>
                     <Image
                       src={song.snippet.thumbnails.default.url}
