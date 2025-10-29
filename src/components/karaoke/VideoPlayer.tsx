@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useKaraoke } from "@/context/KaraokeContext";
@@ -24,11 +25,17 @@ export default function VideoPlayer() {
 
     const onPlayerError = (event: any) => {
       console.error("YouTube Player Error:", event.data);
+      let errorMessage = "Video tidak dapat diputar, melompat ke lagu berikutnya.";
+      if (event.data === 150 || event.data === 101) {
+        errorMessage = "Pemilik video telah menonaktifkan pemutaran di luar YouTube. Melompat ke lagu berikutnya."
+      }
+      
       toast({
         variant: "destructive",
         title: "Video Error",
-        description: "Video tidak dapat diputar, melompat ke lagu berikutnya.",
+        description: errorMessage,
       });
+
       if (nowPlaying) {
           addToHistory(nowPlaying);
       }
@@ -77,6 +84,15 @@ export default function VideoPlayer() {
 
     // Cleanup function
     return () => {
+       // Hancurkan pemutar saat komponen dibongkar
+       if (playerRef.current && typeof playerRef.current.destroy === 'function') {
+        try {
+          playerRef.current.destroy();
+        } catch (error) {
+          console.error("Error destroying YouTube player:", error);
+        }
+        playerRef.current = null;
+      }
       // @ts-ignore
       if(window.onYouTubeIframeAPIReady === createPlayer) {
         // @ts-ignore
