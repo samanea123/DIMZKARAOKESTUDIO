@@ -76,17 +76,15 @@ export default function SongQueue() {
                   <TableCell className="truncate max-w-[100px]">{song.channelTitle}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end items-center gap-1">
-                      {index > 0 && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-green-400 hover:text-green-500"
-                          title="Putar Sekarang"
-                          onClick={() => playSongFromQueue(song.id)}
-                        >
-                          <Play className="h-4 w-4" />
-                        </Button>
-                      )}
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-green-400 hover:text-green-500"
+                        title={index === 0 ? "Putar Ulang" : "Putar Sekarang"}
+                        onClick={() => playSongFromQueue(song.id)}
+                      >
+                        <Play className="h-4 w-4" />
+                      </Button>
                       <Button
                         size="icon"
                         variant="ghost"
