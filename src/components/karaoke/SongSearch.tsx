@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Loader, Mic, Search } from "lucide-react";
 import SearchResults from "./SearchResults";
 import type { YoutubeVideo, FilterMode } from "@/context/KaraokeContext";
+import { Button } from "../ui/button";
+import { cn } from "@/lib/utils";
 
 interface SearchResult extends YoutubeVideo {
   mode: FilterMode;
@@ -16,6 +18,7 @@ export default function SongSearch() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [filter, setFilter] = useState<FilterMode | 'all'>('all');
 
   const handleSearch = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -47,13 +50,17 @@ export default function SongSearch() {
       const karaokeQuery = `${query} karaoke`;
       const originalQuery = query;
 
-      const [karaokeResults, originalResults] = await Promise.all([
-        fetchFromYoutube(karaokeQuery, "karaoke"),
-        fetchFromYoutube(originalQuery, "original"),
-      ]);
+      let karaokeResults: SearchResult[] = [];
+      let originalResults: SearchResult[] = [];
+
+      if (filter === 'all' || filter === 'karaoke') {
+        karaokeResults = await fetchFromYoutube(karaokeQuery, "karaoke");
+      }
+      if (filter === 'all' || filter === 'original') {
+        originalResults = await fetchFromYoutube(originalQuery, "original");
+      }
       
       const combinedResults = [...karaokeResults, ...originalResults];
-      // Simple deduplication based on videoId
       const uniqueResults = Array.from(new Map(combinedResults.map(item => [item.id.videoId, item])).values());
       
       setResults(uniqueResults);
@@ -84,6 +91,12 @@ export default function SongSearch() {
           <Mic />
         </button>
       </form>
+
+      <div className="flex justify-center gap-2">
+        <Button onClick={() => setFilter('all')} variant={filter === 'all' ? 'default' : 'outline'} className={cn("transition-all", {"shadow-[0_0_10px_hsl(var(--primary))]": filter === 'all'})}>Semua</Button>
+        <Button onClick={() => setFilter('karaoke')} variant={filter === 'karaoke' ? 'default' : 'outline'} className={cn("transition-all", {"shadow-[0_0_10px_hsl(var(--primary))]": filter === 'karaoke'})}>Karaoke</Button>
+        <Button onClick={() => setFilter('original')} variant={filter === 'original' ? 'default' : 'outline'} className={cn("transition-all", {"shadow-[0_0_10px_hsl(var(--primary))]": filter === 'original'})}>Original</Button>
+      </div>
 
       {loading && (
         <div className="flex justify-center items-center p-8">
