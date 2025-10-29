@@ -1,3 +1,164 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "1",
+      "description": "Blinding Lights by The Weeknd",
+      "imageUrl": "https://images.unsplash.com/photo-1584679109597-c656b19974c9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "Blinding Lights",
+      "artist": "The Weeknd"
+    },
+    {
+      "id": "2",
+      "description": "Shape of You by Ed Sheeran",
+      "imageUrl": "https://images.unsplash.com/photo-1511735111819-9a3f7709049c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8bXVzaWMlMjBhbGJ1bXxlbnwwfHx8fDE3NjE3MDQzNTB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "Shape of You",
+      "artist": "Ed Sheeran"
+    },
+    {
+      "id": "3",
+      "description": "Levitating by Dua Lipa",
+      "imageUrl": "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "Levitating",
+      "artist": "Dua Lipa"
+    },
+    {
+      "id": "4",
+      "description": "As It Was by Harry Styles",
+      "imageUrl": "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "As It Was",
+      "artist": "Harry Styles"
+    },
+    {
+      "id": "5",
+      "description": "good 4 u by Olivia Rodrigo",
+      "imageUrl": "https://images.unsplash.com/photo-1610041123270-06df7005b281?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "good 4 u",
+      "artist": "Olivia Rodrigo"
+    },
+    {
+      "id": "6",
+      "description": "Peaches by Justin Bieber",
+      "imageUrl": "https://images.unsplash.com/photo-1505672984986-b7c468c7a134?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "Peaches",
+      "artist": "Justin Bieber"
+    },
+    {
+      "id": "7",
+      "description": "Watermelon Sugar by Harry Styles",
+      "imageUrl": "https://images.unsplash.com/photo-1505672984986-b7c468c7a134?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "Watermelon Sugar",
+      "artist": "Harry Styles"
+    },
+    {
+      "id": "8",
+      "description": "Bad Guy by Billie Eilish",
+      "imageUrl": "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "Bad Guy",
+      "artist": "Billie Eilish"
+    },
+    {
+      "id": "9",
+      "description": "Circles by Post Malone",
+      "imageUrl": "https://images.unsplash.com/photo-1505672984986-b7c468c7a134?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "Circles",
+      "artist": "Post Malone"
+    },
+    {
+      "id": "10",
+      "description": "STAY by The Kid LAROI & Justin Bieber",
+      "imageUrl": "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "STAY",
+      "artist": "The Kid LAROI & Justin Bieber"
+    },
+    {
+      "id": "11",
+      "description": "Save Your Tears by The Weeknd",
+      "imageUrl": "https://images.unsplash.com/photo-1619983081563-430f63602796?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "Save Your Tears",
+      "artist": "The Weeknd"
+    },
+    {
+      "id": "12",
+      "description": "Heat Waves by Glass Animals",
+      "imageUrl": "https://images.unsplash.com/photo-1587731556938-38755b4803a6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "Heat Waves",
+      "artist": "Glass Animals"
+    },
+    {
+      "id": "13",
+      "description": "positions by Ariana Grande",
+      "imageUrl": "https://images.unsplash.com/photo-1584679109597-c656b19974c9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "positions",
+      "artist": "Ariana Grande"
+    },
+    {
+      "id": "14",
+      "description": "Someone You Loved by Lewis Capaldi",
+      "imageUrl": "https://images.unsplash.com/photo-1619983081593-e2ba5b543168?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "Someone You Loved",
+      "artist": "Lewis Capaldi"
+    },
+    {
+      "id": "15",
+      "description": "Don't Start Now by Dua Lipa",
+      "imageUrl": "https://images.unsplash.com/photo-1584679109597-c656b19974c9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "Don't Start Now",
+      "artist": "Dua Lipa"
+    },
+    {
+      "id": "16",
+      "description": "Uptown Funk by Mark Ronson ft. Bruno Mars",
+      "imageUrl": "https://images.unsplash.com/photo-1535992165812-68d1861aa71e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "Uptown Funk",
+      "artist": "Mark Ronson ft. Bruno Mars"
+    },
+    {
+      "id": "17",
+      "description": "Señorita by Shawn Mendes & Camila Cabello",
+      "imageUrl": "https://images.unsplash.com/photo-1619983081593-e2ba5b543168?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "Señorita",
+      "artist": "Shawn Mendes & Camila Cabello"
+    },
+    {
+      "id": "18",
+      "description": "Dance Monkey by Tones and I",
+      "imageUrl": "https://images.unsplash.com/photo-1619983081563-430f63602796?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "Dance Monkey",
+      "artist": "Tones and I"
+    },
+    {
+      "id": "19",
+      "description": "Old Town Road by Lil Nas X ft. Billy Ray Cyrus",
+      "imageUrl": "https://images.unsplash.com/photo-1587731556938-38755b4803a6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "Old Town Road",
+      "artist": "Lil Nas X ft. Billy Ray Cyrus"
+    },
+    {
+      "id": "20",
+      "description": "Closer by The Chainsmokers ft. Halsey",
+      "imageUrl": "https://images.unsplash.com/photo-1619983081593-e2ba5b543168?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxtdXNpYyUyMGFsYnVtfGVufDB8fHx8MTc2MTcwNDM1MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "music album",
+      "title": "Closer",
+      "artist": "The Chainsmokers ft. Halsey"
+    }
+  ]
 }
