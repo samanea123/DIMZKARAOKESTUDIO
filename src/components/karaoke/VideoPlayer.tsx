@@ -19,7 +19,7 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const { toast } = useToast();
   const videoId = nowPlaying?.youtubeVideoId;
-  const videoUrl = nowPlaying?.videoUrl;
+  const videoUrl = nowPlaying?.videoUrl; // Menggunakan videoUrl
 
   useEffect(() => {
     const onPlayerStateChange = (event: any) => {
@@ -176,5 +176,3 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
     </div>
   );
 }
-
-    
