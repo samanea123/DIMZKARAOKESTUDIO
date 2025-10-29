@@ -20,51 +20,47 @@ export default function CastButton() {
   const [isCastApiAvailable, setIsCastApiAvailable] = useState(false);
   const [castSession, setCastSession] = useState<any>(null);
   
-  // Use a ref to hold the current session to avoid stale state in callbacks
-  const sessionRef = useRef(castSession);
-  useEffect(() => {
-    sessionRef.current = castSession;
-  }, [castSession]);
+  // Ref untuk melacak videoId yang terakhir kali di-cast
+  // untuk mencegah pengiriman ulang yang tidak perlu
+  const lastCastedVideoIdRef = useRef<string | null>(null);
 
-  // Main effect to initialize the Cast API
+  // Inisialisasi Google Cast API
   useEffect(() => {
     const initializeCastApi = () => {
-      if (window.cast && window.cast.framework) {
-        try {
-          const castContext = window.cast.framework.CastContext.getInstance();
-          castContext.setOptions({
-            // The receiver application ID for YouTube videos
-            receiverApplicationId: window.chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-            autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
-          });
+      try {
+        const context = window.cast.framework.CastContext.getInstance();
+        context.setOptions({
+          receiverApplicationId: window.chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+          autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
+        });
 
-          // Event listener for session state changes (connect/disconnect)
-          const handleSessionStateChange = (event: any) => {
-            console.log('Cast Session State Changed:', event.sessionState);
-            const currentSession = castContext.getCurrentSession();
-            setCastSession(currentSession);
-          };
+        const handleSessionStateChange = (event: any) => {
+          console.log('Cast Session State Changed:', event.sessionState);
+          const currentSession = context.getCurrentSession();
+          setCastSession(currentSession);
+          // Reset ID video terakhir saat koneksi berubah
+          if (event.sessionState === 'SESSION_ENDED' || event.sessionState === 'SESSION_START_FAILED') {
+            lastCastedVideoIdRef.current = null;
+          }
+        };
 
-          castContext.addEventListener(
-            window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
-            handleSessionStateChange
-          );
-          
-          // Set initial session if one already exists
-          setCastSession(castContext.getCurrentSession());
-          
-          setIsCastApiAvailable(true);
-          console.log('Google Cast API initialized successfully.');
-
-        } catch (error) {
-          console.error('Failed to initialize Cast framework:', error);
-          setIsCastApiAvailable(false);
-        }
+        context.addEventListener(
+          window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+          handleSessionStateChange
+        );
+        
+        // Atur sesi awal jika sudah ada
+        setCastSession(context.getCurrentSession());
+        
+        setIsCastApiAvailable(true);
+        console.log('Google Cast API initialized successfully.');
+      } catch (error) {
+        console.error('Failed to initialize Cast framework:', error);
+        setIsCastApiAvailable(false);
       }
     };
     
-    // The official way to check for Cast API availability.
-    // The script in layout.tsx will call this function when it's ready.
+    // Metode resmi untuk memeriksa ketersediaan Cast API
     window.__onGCastApiAvailable = (isAvailable) => {
         if (isAvailable) {
             console.log('Google Cast API is available.');
@@ -76,16 +72,16 @@ export default function CastButton() {
     };
   }, []); 
 
-  // Function to load and cast media
-  const loadMedia = (videoId: string, activeSession: any) => {
-    if (!activeSession || !nowPlaying) return;
+  // Fungsi untuk memuat dan mengirim media ke TV
+  const castToTV = (videoId: string, session: any) => {
+    if (!session || !nowPlaying) return;
 
-    console.log(`Casting video ID: ${videoId} to TV...`);
+    console.log(`Casting YouTube video ID: ${videoId} to TV...`);
 
-    // The YouTube video ID is the only contentId needed for the Default Media Receiver.
+    // DefaultMediaReceiver hanya memerlukan videoId sebagai contentId
     const mediaInfo = new window.chrome.cast.media.MediaInfo(videoId, 'video/youtube');
     
-    // Add metadata for the Cast UI on the TV
+    // Tambahkan metadata untuk ditampilkan di UI TV
     mediaInfo.metadata = new window.chrome.cast.media.YouTubeMediaMetadata();
     mediaInfo.metadata.title = nowPlaying.snippet.title;
     mediaInfo.metadata.artist = nowPlaying.snippet.channelTitle;
@@ -93,12 +89,13 @@ export default function CastButton() {
     
     const request = new window.chrome.cast.media.LoadRequest(mediaInfo);
     
-    activeSession.loadMedia(request).then(
+    session.loadMedia(request).then(
       () => {
-        console.log('Media is loading on Cast device...');
+        console.log('✅ Media berhasil di-cast ke TV');
+        lastCastedVideoIdRef.current = videoId; // Simpan ID video yang berhasil di-cast
       },
       (error: any) => {
-        console.error('Error casting media:', error);
+        console.error('❌ Gagal cast:', error);
         toast({
           variant: 'destructive',
           title: 'Cast Gagal',
@@ -108,31 +105,34 @@ export default function CastButton() {
     );
   };
   
-  // Effect to handle loading media whenever the playing song changes AND a session is active.
+  // OTOMATIS CAST SAAT LAGU BERGANTI (seperti yang Anda instruksikan)
   useEffect(() => {
-    if (nowPlaying && castSession) {
-        // We only need the video ID, not the full URL.
-        loadMedia(nowPlaying.id.videoId, castSession);
+    const videoId = nowPlaying?.id?.videoId;
+    // Hanya cast jika:
+    // 1. Ada sesi Cast yang aktif
+    // 2. Ada lagu yang sedang diputar
+    // 3. Lagu tersebut belum pernah di-cast sebelumnya (mencegah loop)
+    if (castSession && videoId && videoId !== lastCastedVideoIdRef.current) {
+        castToTV(videoId, castSession);
     }
-  // The dependency array ensures this runs only when the specific video ID or session changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nowPlaying?.id.videoId, castSession]);
+  }, [nowPlaying?.id?.videoId, castSession]); // Dependensi pada videoId dan sesi
 
 
   if (!isCastApiAvailable) {
-    // Show a disabled-looking icon while the Cast API is loading or if it fails
+    // Tampilkan ikon yang dinonaktifkan saat API belum siap
     return <Cast className="text-muted-foreground/50" />;
   }
 
-  // The google-cast-launcher element is the official button from the SDK.
-  // It handles its own state (connected, disconnected, etc.) and opens the device picker.
+  // Tombol resmi dari SDK Google Cast.
+  // Tombol ini menangani UI-nya sendiri (terhubung, tidak terhubung) dan membuka pemilih perangkat.
   return (
     <google-cast-launcher style={{
       display: 'inline-block', 
       width: '24px', 
       height: '24px', 
       cursor: 'pointer', 
-      // The --cast-button-color variable is provided by the SDK to style the icon color.
+      // Variabel ini disediakan oleh SDK untuk mengubah warna ikon
       '--cast-button-color': 'hsl(var(--primary))'
     }} />
   );
