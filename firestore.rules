@@ -3,97 +3,95 @@
  *
  * Core Philosophy:
  * This ruleset enforces a strict user-ownership model for song queue items,
- * allowing users to manage their own queues while providing public read access
- * to song metadata. It leverages path-based authorization and data
- * denormalization to minimize reads and maximize security.
+ * allowing users to manage their own queues. Public read access is granted to the songs collection.
  *
  * Data Structure:
- * - /songs/{songId}: Stores public song metadata.
- * - /users/{userId}: Stores user profile information.
- * - /users/{userId}/songQueueItems/{songQueueItemId}: Stores user-specific song queue items.
+ * - /songs/{songId}: Public collection for song metadata.
+ * - /users/{userId}: Stores user profiles, only accessible by the user themselves.
+ * - /users/{userId}/songQueueItems/{songQueueItemId}: Subcollection of users,
+ *   containing their song queue items. Only accessible by the owning user.
  *
  * Key Security Decisions:
- * - Public read access to song metadata is allowed.
  * - Users can only manage their own song queue items.
- * - Listing song queue items is restricted to the owner.
- * - Data validation is limited to authorization-critical fields for prototyping.
+ * - Song metadata is publicly readable.
+ * - User listing is not allowed.
  *
  * Denormalization for Authorization:
- * - SongQueueItems are stored in user-specific subcollections (`/users/{userId}/songQueueItems/{songQueueItemId}`),
- *   eliminating the need for `get()` calls to verify ownership. The `userId` is implicit in the path.
+ * The userId is present in the path `/users/{userId}/songQueueItems/{songQueueItemId}`
+ * This prevents the need for additional reads to check ownership.
  *
  * Structural Segregation:
- * - User-specific song queue items are stored in a private subcollection
- *   (`/users/{userId}/songQueueItems/{songQueueItemId}`), enabling secure `list` operations.
+ * User-specific data (songQueueItems) is stored in a subcollection under each user,
+ * ensuring private data and simplifying access control.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows public read access to song metadata. Only the owner can create, update, or delete songs.
+     * @description Allows public read access to song metadata. Only the owner can modify song documents.
      * @path /songs/{songId}
-     * @allow get, list: if true;
-     * @deny create, update, delete: if false; // TODO: Add owner validation if writes are allowed.
-     * @principle Allows public read access to songs.
+     * @allow (get, list): Public access to read song metadata.
+     * @allow (create, update, delete): No direct create, update or delete for this collection in this version.
+     * @deny (create, update, delete): All writes are denied.
+     * @principle Public read access for song data, owner-only writes (not yet implemented).
      */
     match /songs/{songId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation if writes are allowed.
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Allows a user to read and write their own user profile.
+     * @description Restricts access to user profiles. Only the user themselves can read or write their profile.
      * @path /users/{userId}
-     * @allow get: if isSignedIn() && isOwner(userId);
-     * @allow list: if false;
-     * @allow create: if isSignedIn() && isOwner(userId);
-     * @allow update: if isSignedIn() && isOwner(userId);
-     * @allow delete: if false; // User deletion is not allowed.
-     * @deny get: if !isSignedIn() || !isOwner(userId);
-     * @deny create: if !isSignedIn() || !isOwner(userId);
-     * @deny update: if !isSignedIn() || !isOwner(userId);
+     * @allow (get): User can read their own profile.
+     * @allow (create): User can create their own profile if the userId matches their auth UID.
+     * @allow (update): User can update their own profile if the userId matches their auth UID.
+     * @allow (delete): User can delete their own profile if the userId matches their auth UID.
+     * @allow (list): Listing users is not allowed.
+     * @deny (get): User cannot read other user profiles.
+     * @deny (create): User cannot create a profile with a mismatched userId.
+     * @deny (update): User cannot update other user profiles or change their own userId.
+     * @deny (delete): User cannot delete other user profiles.
      * @principle Enforces document ownership for user profiles.
      */
     match /users/{userId} {
-      allow get: if isSignedIn() && isOwner(userId);
+      allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if false; // User deletion is not allowed.
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
     }
 
     /**
-     * @description Allows a user to manage their own song queue items.
+     * @description Manages song queue items for each user. Only the user can manage their own queue items.
      * @path /users/{userId}/songQueueItems/{songQueueItemId}
-     * @allow get: if isSignedIn() && isOwner(userId);
-     * @allow list: if isSignedIn() && isOwner(userId);
-     * @allow create: if isSignedIn() && isOwner(userId);
-     * @allow update: if isSignedIn() && isExistingOwner(userId);
-     * @allow delete: if isSignedIn() && isExistingOwner(userId);
-     * @deny create: if !isSignedIn() || !isOwner(userId);
-     * @deny update: if !isSignedIn() || !isExistingOwner(userId);
-     * @deny delete: if !isSignedIn() || !isExistingOwner(userId);
+     * @allow (get): User can read their own song queue items.
+     * @allow (create): User can add songs to their own queue.
+     * @allow (update): User can update songs in their own queue.
+     * @allow (delete): User can delete songs from their own queue.
+     * @allow (list): User can list songs in their own queue.
+     * @deny (get): User cannot read other user's queue items.
+     * @deny (create): User cannot add songs to other user's queues.
+     * @deny (update): User cannot update songs in other user's queues.
+     * @deny (delete): User cannot delete songs from other user's queues.
      * @principle Enforces document ownership for song queue items.
      */
     match /users/{userId}/songQueueItems/{songQueueItemId} {
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isSignedIn() && isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isExistingOwner(userId);
-      allow delete: if isSignedIn() && isExistingOwner(userId);
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
     }
+  }
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
+  // Helper functions
+  function isSignedIn() {
+    return request.auth != null;
+  }
 
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    function isExistingOwner(userId) {
-      return isSignedIn() && isOwner(userId) && resource != null;
-    }
+  function isOwner(userId) {
+    return isSignedIn() && request.auth.uid == userId;
   }
 }
