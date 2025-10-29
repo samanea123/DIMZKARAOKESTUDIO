@@ -14,76 +14,76 @@ export default function VideoPlayer() {
   useEffect(() => {
     // Fungsi untuk membuat pemutar YouTube
     const createPlayer = (videoId: string) => {
+      // Pastikan #youtube-player-iframe ada di DOM
+      if (!document.getElementById("youtube-player-iframe")) return;
+
       // Hancurkan pemutar lama jika ada
       if (playerRef.current && typeof playerRef.current.destroy === 'function') {
         playerRef.current.destroy();
       }
       
       // @ts-ignore
-      playerRef.current = new window.YT.Player("youtube-player-iframe", {
-        videoId: videoId,
-        playerVars: {
-            autoplay: 1,
-            controls: 1,
-        },
-        events: {
-          onReady: (event: any) => {
-            event.target.playVideo();
+      if (window.YT && window.YT.Player) {
+        // @ts-ignore
+        playerRef.current = new window.YT.Player("youtube-player-iframe", {
+          videoId: videoId,
+          playerVars: {
+              autoplay: 1,
+              controls: 1,
           },
-          onStateChange: (event: any) => {
-            // Jika video selesai (state 0)
-            if (event.data === window.YT.PlayerState.ENDED) { 
+          events: {
+            onReady: (event: any) => {
+              event.target.playVideo();
+            },
+            onStateChange: (event: any) => {
+              // Jika video selesai (state 0)
+              // @ts-ignore
+              if (event.data === window.YT.PlayerState.ENDED) { 
+                if (nowPlaying) {
+                  addToHistory(nowPlaying);
+                }
+                playNextSong();
+              }
+            },
+            onError: (event: any) => {
+              console.error("YouTube Player Error:", event.data);
+              toast({
+                variant: "destructive",
+                title: "Video Error",
+                description: "Video tidak dapat diputar, melompat ke lagu berikutnya.",
+              });
+              // Tambahkan lagu yang gagal ke riwayat sebelum melompat
               if (nowPlaying) {
-                addToHistory(nowPlaying);
+                  addToHistory(nowPlaying);
               }
               playNextSong();
-            }
+            },
           },
-          onError: (event: any) => {
-            console.error("YouTube Player Error:", event.data);
-            toast({
-              variant: "destructive",
-              title: "Video Error",
-              description: "Video tidak dapat diputar, melompat ke lagu berikutnya.",
-            });
-            // Tambahkan lagu yang gagal ke riwayat sebelum melompat
-            if (nowPlaying) {
-                addToHistory(nowPlaying);
-            }
-            playNextSong();
-          },
-        },
-      });
+        });
+      } else {
+        console.error("YouTube IFrame API is not available.");
+      }
     };
 
-    // Fungsi untuk menginisialisasi pembuatan pemutar
-    const initialize = () => {
-        if (nowPlaying) {
-            // @ts-ignore
-            if (window.YT && window.YT.Player) {
-                createPlayer(nowPlaying.id.videoId);
-            } else {
-                // Tunggu API YouTube siap jika belum ada
-                // @ts-ignore
-                window.onYouTubeIframeAPIReady = () => createPlayer(nowPlaying.id.videoId);
-            }
-        } else {
-            // Jika tidak ada lagu, hancurkan pemutar
-            if (playerRef.current && typeof playerRef.current.destroy === 'function') {
-                playerRef.current.destroy();
-                playerRef.current = null;
-            }
-        }
+    if (nowPlaying?.id?.videoId) {
+      // @ts-ignore
+      if (window.YT && window.YT.Player) {
+        createPlayer(nowPlaying.id.videoId);
+      } else {
+        // @ts-ignore
+        window.onYouTubeIframeAPIReady = () => createPlayer(nowPlaying.id.videoId);
+      }
+    } else {
+      // Jika tidak ada lagu, hancurkan pemutar
+      if (playerRef.current && typeof playerRef.current.destroy === 'function') {
+          playerRef.current.destroy();
+          playerRef.current = null;
+      }
     }
-    
-    initialize();
 
-    // Cleanup effect
     return () => {
-      // Tidak perlu menghancurkan di sini karena akan ditangani saat lagu berikutnya dimainkan atau komponen di-unmount
+      // Fungsi cleanup tidak diperlukan di sini karena ditangani saat lagu berubah
     };
-  // Dependensi useEffect adalah videoId dari nowPlaying. 
-  // Ini memastikan useEffect berjalan setiap kali lagu berubah.
   }, [nowPlaying?.id.videoId]);
 
 
@@ -100,4 +100,3 @@ export default function VideoPlayer() {
     </div>
   );
 }
-
