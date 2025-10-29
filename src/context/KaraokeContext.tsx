@@ -90,8 +90,8 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
 
   const stopPlayback = () => {
     if (queue.length > 0) {
-        const songsToMove = [...queue];
-        setHistory(prev => [...songsToMove, ...prev].slice(0,20));
+        const currentSong = queue[0];
+        setHistory(prev => [currentSong, ...prev].slice(0,20));
     }
     setQueue([]);
   };
