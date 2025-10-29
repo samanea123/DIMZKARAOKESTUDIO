@@ -80,7 +80,7 @@ export default function SongQueue() {
                         size="icon"
                         variant="ghost"
                         className="h-8 w-8 text-green-400 hover:text-green-500"
-                        title={index === 0 ? "Putar Ulang" : "Putar Sekarang"}
+                        title="Putar Sekarang"
                         onClick={() => playSongFromQueue(song.id)}
                       >
                         <Play className="h-4 w-4" />
