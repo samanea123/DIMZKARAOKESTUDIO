@@ -58,6 +58,7 @@ interface KaraokeContextType {
   isFavorite: (videoId: string) => boolean;
   playFromFavorites: (song: FavoriteEntry) => void;
   playNextFromAnywhere: (song: YoutubeVideo, mode: FilterMode) => void;
+  openMonitor: () => void;
 }
 
 const KaraokeContext = createContext<KaraokeContextType | undefined>(undefined);
@@ -67,6 +68,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   const [songHistory, setSongHistory] = useState<HistoryEntry[]>([]);
   const [favorites, setFavorites] = useState<FavoriteEntry[]>([]);
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
+  const [monitorWindow, setMonitorWindow] = useState<Window | null>(null);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -90,6 +92,25 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
         setFavorites([]);
     }
   }, []);
+
+  const nowPlaying = queue[0];
+
+  useEffect(() => {
+    // Automatically open monitor when the first song starts playing
+    if (nowPlaying && (!monitorWindow || monitorWindow.closed)) {
+      openMonitor();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nowPlaying]);
+
+  const openMonitor = () => {
+    if (monitorWindow && !monitorWindow.closed) {
+        monitorWindow.focus();
+    } else {
+        const newWindow = window.open('/monitor', 'karaoke-monitor', 'width=800,height=600');
+        setMonitorWindow(newWindow);
+    }
+  };
 
   const updateQueue = (newQueue: QueueEntry[]) => {
     setQueue(newQueue);
@@ -282,8 +303,6 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
       }, 100);
   };
 
-  const nowPlaying = queue[0];
-
   return (
     <KaraokeContext.Provider value={{ 
         queue, 
@@ -305,7 +324,8 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
         addOrRemoveFavorite,
         isFavorite,
         playFromFavorites,
-        playNextFromAnywhere
+        playNextFromAnywhere,
+        openMonitor
     }}>
       {children}
     </KaraokeContext.Provider>
