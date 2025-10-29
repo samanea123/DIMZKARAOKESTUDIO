@@ -1,9 +1,10 @@
+
 "use client";
 
-import { createContext, useContext, useState, type ReactNode, useEffect, useMemo } from "react";
+import { createContext, useContext, useState, type ReactNode, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy, doc, deleteDoc, addDoc, serverTimestamp, writeBatch } from "firebase/firestore";
+import { collection, query, orderBy, doc, writeBatch, serverTimestamp, addDoc } from "firebase/firestore";
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 export type FilterMode = "karaoke" | "original";
@@ -79,12 +80,13 @@ const TEMP_USER_ID = "shared-queue-user";
 
 export function KaraokeProvider({ children }: { children: ReactNode }) {
   const { firestore } = useFirebase();
+  const db = firestore;
+
   const [songHistory, setSongHistory] = useState<HistoryEntry[]>([]);
   const [favorites, setFavorites] = useState<FavoriteEntry[]>([]);
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [monitorWindow, setMonitorWindow] = useState<Window | null>(null);
   const { toast } = useToast();
-  const db = firestore;
 
   // --- FIREBASE QUEUE SYNC ---
   const queueQuery = useMemoFirebase(() => {
@@ -95,7 +97,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     );
   }, [db]);
   
-  const { data: queue = [], isLoading: isQueueLoading } = useCollection<QueueEntry>(queueQuery);
+  const { data: queue, isLoading: isQueueLoading } = useCollection<QueueEntry>(queueQuery);
   // --- END FIREBASE QUEUE SYNC ---
   
   useEffect(() => {
@@ -156,7 +158,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
 
   const addSongToQueue = async (song: YoutubeVideo, mode: FilterMode) => {
-    if (!db) return;
+    if (!db || !queue) return;
     if (queue.some(s => s.youtubeVideoId === song.id.videoId)) {
       toast({
         variant: "destructive",
@@ -203,12 +205,11 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
 
   const playNextFromAnywhere = async (song: YoutubeVideo, mode: FilterMode) => {
-      if (!queue) return;
+      if (!db || !queue) return;
       const songInQueue = queue.find(s => s.youtubeVideoId === song.id.videoId);
       if (songInQueue) {
           await addSongToPlayNext(songInQueue);
       } else {
-          if (!db) return;
           const newOrder = (nowPlaying?.order || 0) + 0.5;
           const newEntry = {
               youtubeVideoId: song.id.videoId,
@@ -236,12 +237,12 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
 
   const playSongFromQueue = (docId: string) => {
-    if (!db || !nowPlaying) return;
-    const songToPlay = queue.find(s => s.id === docId);
+    if (!db) return;
+    const songToPlay = queue?.find(s => s.id === docId);
     if (!songToPlay) return;
 
     // To make it play now, we give it an order number smaller than the current `nowPlaying` song.
-    const newOrder = (nowPlaying?.order || 1) - 1;
+    const newOrder = (nowPlaying?.order ?? 1) - 1;
     
     const docRef = doc(db, "users", TEMP_USER_ID, "songQueueItems", docId);
     updateDocumentNonBlocking(docRef, { order: newOrder });
@@ -340,7 +341,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
 
   return (
     <KaraokeContext.Provider value={{ 
-        queue,
+        queue: queue || [],
         isQueueLoading,
         songHistory,
         favorites,

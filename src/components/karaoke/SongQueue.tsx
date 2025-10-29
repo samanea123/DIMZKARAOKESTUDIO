@@ -51,7 +51,7 @@ export default function SongQueue() {
                   </TableCell>
                 </TableRow>
               )}
-              {!isQueueLoading && queue && queue.map((song, index) => (
+              {!isQueueLoading && queue.map((song, index) => (
                 <TableRow 
                   key={song.id} 
                   className={index === 0 ? "bg-primary/10 group" : "group"}
@@ -104,7 +104,7 @@ export default function SongQueue() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isQueueLoading && (!queue || queue.length === 0) && (
+              {!isQueueLoading && queue.length === 0 && (
                 <TableRow>
                     <TableCell colSpan={4} className="text-center text-muted-foreground h-24">
                         Antrian masih kosong.
@@ -118,5 +118,3 @@ export default function SongQueue() {
     </Card>
   );
 }
-
-    
