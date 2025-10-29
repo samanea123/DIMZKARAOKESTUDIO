@@ -168,6 +168,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
       return;
     }
     
+    // Use a large timestamp-based number for initial order to ensure new songs go to the end.
     const maxOrder = queue.reduce((max, s) => Math.max(max, s.order), 0);
     
     const newEntry = {
@@ -237,16 +238,19 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
 
   const playSongFromQueue = (docId: string) => {
-    if (!db || !nowPlaying) return;
-    const songToPlay = queue?.find(s => s.id === docId);
+    if (!db || !queue) return;
+    
+    const songToPlay = queue.find(s => s.id === docId);
     if (!songToPlay) return;
 
-    // To make it play now, we give it an order number smaller than the current `nowPlaying` song.
-    const newOrder = nowPlaying.order - 1;
+    // Determine the new order. If a song is playing, make it just before that.
+    // If no song is playing, make it the first (e.g., order 0 or smaller).
+    const newOrder = nowPlaying ? nowPlaying.order - 1 : Date.now() * -1;
     
     const docRef = doc(db, "users", TEMP_USER_ID, "songQueueItems", docId);
     updateDocumentNonBlocking(docRef, { order: newOrder });
   };
+
 
   const playNextSong = () => {
     if (nowPlaying) {
@@ -376,3 +380,5 @@ export function useKaraoke() {
   }
   return context;
 }
+
+    
