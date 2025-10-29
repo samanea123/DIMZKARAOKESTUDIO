@@ -32,11 +32,11 @@ function KaraokeContent() {
             {activeTab === 'favorites' && <Favorites />}
           </div>
         </div>
-        <aside className="hidden xl:block w-[350px] border-l bg-card h-full">
-            <div className="h-1/2">
+        <aside className="hidden xl:flex flex-col w-[350px] border-l bg-card h-full">
+            <div className="h-1/2 flex flex-col">
                 <VideoPlayer />
             </div>
-            <div className="h-1/2 border-t">
+            <div className="h-1/2 flex flex-col border-t">
                 <SongQueue />
             </div>
         </aside>
