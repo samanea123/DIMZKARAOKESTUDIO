@@ -30,6 +30,7 @@ export interface YoutubeVideo {
 export interface QueueEntry {
     id: string; // Firestore document ID
     youtubeVideoId: string;
+    videoUrl: string; // <<< Ditambahkan
     title: string;
     channelTitle: string;
     thumbnails: YoutubeVideo['snippet']['thumbnails'];
@@ -77,9 +78,6 @@ interface KaraokeContextType {
 
 const KaraokeContext = createContext<KaraokeContextType | undefined>(undefined);
 
-// Hardcoded user ID for now
-const TEMP_USER_ID = "shared-queue-user";
-
 export function KaraokeProvider({ children }: { children: ReactNode }) {
   const { firestore, user } = useFirebase();
   const db = firestore;
@@ -90,35 +88,34 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   const [monitorWindow, setMonitorWindow] = useState<Window | null>(null);
   const { toast } = useToast();
 
-  // --- FIREBASE QUEUE SYNC ---
   const queueQuery = useMemoFirebase(() => {
-    // Wait until we have a user ID before creating the query.
-    if (!db || !user) return null;
+    if (!db || !user?.uid) return null;
     return query(
         collection(db, "users", user.uid, "songQueueItems"), 
         orderBy("order", "asc")
     );
-  }, [db, user]);
+  }, [db, user?.uid]);
   
   const { data: queue, isLoading: isQueueLoading }: UseCollectionResult<QueueEntry> = useCollection<QueueEntry>(queueQuery);
-  // --- END FIREBASE QUEUE SYNC ---
   
   useEffect(() => {
-    try {
-        const savedHistory = localStorage.getItem("dimz-karaoke-history");
-        if (savedHistory) {
-            setSongHistory(JSON.parse(savedHistory));
+    if (user) {
+        try {
+            const savedHistory = localStorage.getItem(`dimz-karaoke-history-${user.uid}`);
+            if (savedHistory) {
+                setSongHistory(JSON.parse(savedHistory));
+            }
+            const savedFavorites = localStorage.getItem(`dimz-karaoke-favorites-${user.uid}`);
+            if (savedFavorites) {
+                setFavorites(JSON.parse(savedFavorites));
+            }
+        } catch (error) {
+            console.error("Could not load data from localStorage", error);
+            setSongHistory([]);
+            setFavorites([]);
         }
-        const savedFavorites = localStorage.getItem("dimz-karaoke-favorites");
-        if (savedFavorites) {
-            setFavorites(JSON.parse(savedFavorites));
-        }
-    } catch (error) {
-        console.error("Could not load data from localStorage", error);
-        setSongHistory([]);
-        setFavorites([]);
     }
-  }, []);
+  }, [user]);
 
   const nowPlaying = queue && queue.length > 0 ? queue[0] : undefined;
 
@@ -143,18 +140,20 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
 
 
   const updateHistory = (newHistory: HistoryEntry[]) => {
+    if (!user) return;
     setSongHistory(newHistory);
     try {
-      localStorage.setItem("dimz-karaoke-history", JSON.stringify(newHistory));
+      localStorage.setItem(`dimz-karaoke-history-${user.uid}`, JSON.stringify(newHistory));
     } catch (error) {
       console.error("Could not save history to localStorage", error);
     }
   };
   
   const updateFavorites = (newFavorites: FavoriteEntry[]) => {
+    if (!user) return;
     setFavorites(newFavorites);
     try {
-      localStorage.setItem("dimz-karaoke-favorites", JSON.stringify(newFavorites));
+      localStorage.setItem(`dimz-karaoke-favorites-${user.uid}`, JSON.stringify(newFavorites));
     } catch (error) {
       console.error("Could not save favorites to localStorage", error);
     }
@@ -171,11 +170,11 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
       return;
     }
     
-    // Use a large timestamp-based number for initial order to ensure new songs go to the end.
     const maxOrder = queue.reduce((max, s) => Math.max(max, s.order), 0);
     
     const newEntry = {
         youtubeVideoId: song.id.videoId,
+        videoUrl: `https://www.youtube.com/embed/${song.id.videoId}`,
         title: song.snippet.title,
         channelTitle: song.snippet.channelTitle,
         thumbnails: song.snippet.thumbnails,
@@ -195,9 +194,8 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
 
   const addSongToPlayNext = async (song: QueueEntry) => {
     if (!db || !queue || !user) return;
-
-    // The song to be played next should have an order between nowPlaying (if it exists) and the next song
-    const newOrder = (nowPlaying?.order || 0) + 0.5;
+    
+    const newOrder = nowPlaying ? nowPlaying.order + 0.5 : 1.5;
 
     const docRef = doc(db, "users", user.uid, "songQueueItems", song.id);
     updateDocumentNonBlocking(docRef, { order: newOrder });
@@ -214,9 +212,10 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
       if (songInQueue) {
           await addSongToPlayNext(songInQueue);
       } else {
-          const newOrder = (nowPlaying?.order || 0) + 0.5;
+          const newOrder = nowPlaying ? nowPlaying.order + 0.5 : 1.5;
           const newEntry = {
               youtubeVideoId: song.id.videoId,
+              videoUrl: `https://www.youtube.com/embed/${song.id.videoId}`,
               title: song.snippet.title,
               channelTitle: song.snippet.channelTitle,
               thumbnails: song.snippet.thumbnails,
@@ -246,14 +245,14 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     const songToPlay = queue.find(s => s.id === docId);
     if (!songToPlay) return;
 
-    // If the song is already playing, do nothing (or we could restart it, but this is simpler)
     if (nowPlaying?.id === docId) {
-        // Optional: logic to restart video could go here by communicating with VideoPlayer state
+        // This is handled inside VideoPlayer to restart the video.
+        // We just need to notify it. A simple way is to re-set the state,
+        // but the video player effect already depends on videoId. 
+        // Forcing a replay can be done by changing a key or calling a player method directly.
         return;
     }
 
-    // Get the order of the current first song. If no song is playing, use 0.
-    // Subtract 1 to ensure the selected song becomes the new first song.
     const newOrder = (nowPlaying?.order ?? 1) - 1;
     
     const docRef = doc(db, "users", user.uid, "songQueueItems", docId);
@@ -269,7 +268,6 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   };
 
   const playPreviousSong = () => {
-    // This is complex with Firestore ordering, would need a more sophisticated history/state management
     console.warn("Play previous song is not implemented for Firestore-backed queue yet.");
   };
 
@@ -277,7 +275,6 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     if(nowPlaying) {
       addToHistory(nowPlaying);
     }
-    // Delete all songs in the queue
     if (db && queue && user) {
       const batch = writeBatch(db);
       queue.forEach(song => {
@@ -303,7 +300,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     const newHistory = [
       newHistoryEntry, 
       ...songHistory.filter(item => item.id.videoId !== song.youtubeVideoId)
-    ].slice(0, 50); // Keep last 50 songs
+    ].slice(0, 50);
     
     updateHistory(newHistory);
   };
@@ -389,3 +386,5 @@ export function useKaraoke() {
   }
   return context;
 }
+
+    

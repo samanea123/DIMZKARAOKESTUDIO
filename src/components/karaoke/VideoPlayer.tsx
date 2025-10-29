@@ -3,9 +3,10 @@
 
 import { useKaraoke } from "@/context/KaraokeContext";
 import { cn } from "@/lib/utils";
-import { Tv2 } from "lucide-react";
+import { Maximize, Tv2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "../ui/button";
 
 interface VideoPlayerProps {
   isMonitor?: boolean;
@@ -18,6 +19,7 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const { toast } = useToast();
   const videoId = nowPlaying?.youtubeVideoId;
+  const videoUrl = nowPlaying?.videoUrl;
 
   useEffect(() => {
     const onPlayerStateChange = (event: any) => {
@@ -116,6 +118,46 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
   }, [videoId, isMonitor]);
 
 
+  const handleEnterFullscreen = () => {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch(err => {
+            console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+        });
+    }
+  };
+
+
+  if (isMonitor && nowPlaying) {
+      return (
+          <div className="h-screen w-screen bg-black">
+              <div 
+                id="youtube-player-iframe" 
+                className={cn(
+                    "w-full h-full transition-opacity duration-700",
+                    isTransitioning || !nowPlaying ? "opacity-0" : "opacity-100"
+                )}
+              />
+          </div>
+      );
+  }
+
+  if (isMonitor && !nowPlaying) {
+      return (
+          <div className="flex flex-col h-screen w-screen bg-black items-center justify-center text-white p-8">
+               <div className="text-center text-muted-foreground">
+                  <Tv2 size={64} className="mx-auto mb-4" />
+                  <h1 className="text-4xl font-headline text-white">Layar Monitor Karaoke</h1>
+                  <p className="mt-2 mb-8">Menunggu lagu untuk diputar...</p>
+                   <Button onClick={handleEnterFullscreen} size="lg">
+                      <Maximize className="mr-2" />
+                      Masuk Layar Penuh
+                  </Button>
+              </div>
+          </div>
+      );
+  }
+
   return (
     <div ref={containerRef} className="h-full w-full bg-black flex items-center justify-center">
         <div 
@@ -134,3 +176,5 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
     </div>
   );
 }
+
+    
