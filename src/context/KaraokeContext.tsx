@@ -57,6 +57,7 @@ interface KaraokeContextType {
   addOrRemoveFavorite: (song: YoutubeVideo, mode: FilterMode) => void;
   isFavorite: (videoId: string) => boolean;
   playFromFavorites: (song: FavoriteEntry) => void;
+  playNextFromAnywhere: (song: YoutubeVideo, mode: FilterMode) => void;
 }
 
 const KaraokeContext = createContext<KaraokeContextType | undefined>(undefined);
@@ -147,6 +148,26 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
       description: `${song.snippet.title} akan diputar berikutnya.`,
     })
   }
+
+  const playNextFromAnywhere = (song: YoutubeVideo, mode: FilterMode) => {
+    const songInQueue = queue.find(s => s.id.videoId === song.id.videoId);
+    if (songInQueue) {
+      addSongToPlayNext(songInQueue);
+    } else {
+      const newEntry: QueueEntry = { ...song, mode };
+      const newQueue = [...queue];
+       if (newQueue.length === 0) {
+        updateQueue([newEntry]);
+      } else {
+        newQueue.splice(1, 0, newEntry);
+        updateQueue(newQueue);
+      }
+      toast({
+        title: "Antrian Diperbarui",
+        description: `${song.snippet.title} akan diputar berikutnya.`,
+      });
+    }
+  };
 
   const removeSongFromQueue = (videoId: string) => {
     updateQueue(queue.filter((song) => song.id.videoId !== videoId));
@@ -283,7 +304,8 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
         clearHistory,
         addOrRemoveFavorite,
         isFavorite,
-        playFromFavorites
+        playFromFavorites,
+        playNextFromAnywhere
     }}>
       {children}
     </KaraokeContext.Provider>

@@ -20,12 +20,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useKaraoke } from "@/context/KaraokeContext";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Play, Star } from "lucide-react";
+import { Play, SkipForward, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "../ui/badge";
 
 export default function Favorites() {
-  const { favorites, playFromFavorites, addOrRemoveFavorite, isFavorite } = useKaraoke();
+  const { favorites, playFromFavorites, addOrRemoveFavorite, isFavorite, playNextFromAnywhere } = useKaraoke();
 
   return (
     <Card className="h-full flex flex-col mt-[-2rem] xl:mt-0">
@@ -89,7 +89,17 @@ export default function Favorites() {
                         size="icon"
                         variant="ghost"
                         className="hover:text-primary"
+                        onClick={() => playNextFromAnywhere(song, song.mode)}
+                        title="Antrikan Berikutnya"
+                      >
+                        <SkipForward className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="hover:text-primary"
                         onClick={() => playFromFavorites(song)}
+                         title="Putar Sekarang"
                       >
                         <Play className="h-4 w-4" />
                       </Button>

@@ -20,7 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useKaraoke } from "@/context/KaraokeContext";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { History as HistoryIcon, Play, Star, Trash2 } from "lucide-react";
+import { History as HistoryIcon, Play, SkipForward, Star, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "../ui/badge";
 
 export default function History() {
-  const { songHistory, playFromHistory, clearHistory, addOrRemoveFavorite, isFavorite } = useKaraoke();
+  const { songHistory, playFromHistory, clearHistory, addOrRemoveFavorite, isFavorite, playNextFromAnywhere } = useKaraoke();
 
   const formatDateTime = (isoString: string) => {
     const date = new Date(isoString);
@@ -135,7 +135,17 @@ export default function History() {
                         size="icon"
                         variant="ghost"
                         className="hover:text-primary"
+                        onClick={() => playNextFromAnywhere(song, song.mode)}
+                        title="Antrikan Berikutnya"
+                      >
+                        <SkipForward className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="hover:text-primary"
                         onClick={() => playFromHistory(song)}
+                        title="Putar Sekarang"
                       >
                         <Play className="h-4 w-4" />
                       </Button>
