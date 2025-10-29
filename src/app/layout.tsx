@@ -22,10 +22,10 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        {children}
-        <Toaster />
         <Script src="https://www.youtube.com/iframe_api" strategy="beforeInteractive"></Script>
         <Script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1" strategy="beforeInteractive"></Script>
+        {children}
+        <Toaster />
       </body>
     </html>
   );
