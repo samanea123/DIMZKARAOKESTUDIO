@@ -6,38 +6,36 @@ import VideoPlayer from "@/components/karaoke/VideoPlayer";
 import { KaraokeProvider, useKaraoke } from "@/context/KaraokeContext";
 import { Tv2, Expand } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 function MonitorPageContent() {
     const { nowPlaying } = useKaraoke();
     const containerRef = useRef<HTMLDivElement>(null);
-    const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
-
-    const enterFullscreen = () => {
-        if (containerRef.current && !isFullscreen) {
-            containerRef.current.requestFullscreen().catch(err => {
-                console.error("Gagal masuk mode layar penuh:", err);
-            });
-        }
-    };
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     useEffect(() => {
+        // Set initial state
+        setIsFullscreen(!!document.fullscreenElement);
+
         const handleFullscreenChange = () => {
             setIsFullscreen(!!document.fullscreenElement);
         };
 
         document.addEventListener('fullscreenchange', handleFullscreenChange);
 
-        // Cek status fullscreen saat komponen dimuat
-        handleFullscreenChange();
-
         return () => {
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
         };
     }, []);
 
-    // Jika sudah fullscreen, atau jika ada lagu yang sedang diputar,
-    // langsung tampilkan pemutar video.
+    const enterFullscreen = () => {
+        if (containerRef.current) {
+            containerRef.current.requestFullscreen().catch(err => {
+                console.error("Gagal masuk mode layar penuh:", err);
+            });
+        }
+    };
+
+    // Kondisi 1: Tampilkan VideoPlayer jika sudah fullscreen ATAU ada lagu yang sedang diputar.
     if (isFullscreen || nowPlaying) {
         return (
             <div ref={containerRef} className="flex flex-col h-screen w-screen bg-black items-center justify-center text-white">
@@ -46,7 +44,7 @@ function MonitorPageContent() {
         );
     }
     
-    // Tampilan awal jika belum fullscreen dan tidak ada lagu yang diputar
+    // Kondisi 2: Tampilan awal jika belum fullscreen dan tidak ada lagu yang diputar.
     return (
         <div ref={containerRef} className="flex flex-col h-screen w-screen bg-black items-center justify-center text-white">
              <div className="text-center text-muted-foreground p-8">
