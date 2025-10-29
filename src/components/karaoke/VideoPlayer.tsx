@@ -20,12 +20,19 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
   const videoId = nowPlaying?.youtubeVideoId;
 
   const handlePlay = () => {
-    if (isMonitor && playerRef.current?.g?.requestFullscreen) {
-      try {
-        playerRef.current.g.requestFullscreen();
-      } catch (err) {
-        console.error("Gagal masuk mode layar penuh:", err);
-      }
+    const videoElement = playerRef.current?.g; // The underlying <iframe> element
+    if (isMonitor && videoElement) {
+        // Request fullscreen on the container for better control
+        const container = containerRef.current;
+        if (container && !document.fullscreenElement) {
+             if (container.requestFullscreen) {
+                container.requestFullscreen().catch(err => console.error("Error attempting to enable full-screen mode:", err));
+            } else if ((container as any).webkitRequestFullscreen) { /* Safari */
+                (container as any).webkitRequestFullscreen();
+            } else if ((container as any).msRequestFullscreen) { /* IE11 */
+                (container as any).msRequestFullscreen();
+            }
+        }
     }
   };
 
@@ -105,11 +112,18 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
     };
     
     if (videoId) {
-        loadVideoWithTransition(videoId);
+        const currentLoadedId = playerRef.current?.getVideoData()?.video_id;
+        if (videoId !== currentLoadedId) {
+            loadVideoWithTransition(videoId);
+        }
     } else {
         if (playerRef.current) {
-            playerRef.current.destroy();
-            playerRef.current = null;
+             setIsTransitioning(true);
+             setTimeout(() => {
+                playerRef.current.destroy();
+                playerRef.current = null;
+                setIsTransitioning(false);
+             }, 600);
         }
     }
 
@@ -118,7 +132,7 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
       window.onYouTubeIframeAPIReady = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoId]);
+  }, [videoId, isMonitor]);
 
 
   return (

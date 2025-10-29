@@ -22,18 +22,25 @@ function MonitorPageContent() {
     }, []);
 
     const enterFullscreen = () => {
-        if (containerRef.current) {
-            containerRef.current.requestFullscreen().catch(err => {
-                console.error("Gagal masuk mode layar penuh:", err);
-                alert("Mode layar penuh gagal. Pastikan browser Anda mengizinkannya.");
-            });
+        const elem = containerRef.current;
+        if (elem) {
+             if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                    alert(`Gagal masuk mode layar penuh. Pastikan browser Anda mengizinkannya.`);
+                });
+            } else if ((elem as any).webkitRequestFullscreen) { /* Safari */
+                (elem as any).webkitRequestFullscreen();
+            } else if ((elem as any).msRequestFullscreen) { /* IE11 */
+                (elem as any).msRequestFullscreen();
+            }
         }
     };
 
     // If a song is playing OR the screen is already in fullscreen mode, show the player.
     if (nowPlaying || isFullscreen) {
         return (
-            <div ref={containerRef} className="flex flex-col h-screen w-screen bg-black items-center justify-center text-white">
+            <div ref={containerRef} className="h-screen w-screen bg-black">
                 <VideoPlayer isMonitor={true} />
             </div>
         );
