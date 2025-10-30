@@ -12,6 +12,20 @@ import { KaraokeProvider, useKaraoke } from "@/context/KaraokeContext";
 import VideoPlayer from "@/components/karaoke/VideoPlayer";
 import { Separator } from "@/components/ui/separator";
 import Script from "next/script";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+
+function MobileHeader() {
+  return (
+    <div className="md:hidden flex items-center justify-between p-2 sticky top-0 bg-background z-10 border-b">
+        <SidebarTrigger />
+        <h1 className="font-headline text-2xl font-bold text-white tracking-wider">
+          DIMZ KARAOKE
+        </h1>
+        <div className="w-8"></div>
+    </div>
+  )
+}
+
 
 function KaraokeContent() {
   const { activeTab } = useKaraoke();
@@ -19,6 +33,7 @@ function KaraokeContent() {
   return (
     <div className="flex h-screen bg-background">
       <AppLayout>
+        <MobileHeader />
         <div className="flex-1 flex flex-col h-full overflow-hidden">
           {activeTab === 'home' && (
             <div className="flex-1 flex flex-col gap-6 overflow-y-auto p-4 md:p-6 lg:p-8">

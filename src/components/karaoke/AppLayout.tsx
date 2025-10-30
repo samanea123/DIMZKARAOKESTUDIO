@@ -7,6 +7,7 @@ import {
   Star,
   Settings,
   History as HistoryIcon,
+  Monitor,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import {
@@ -34,7 +35,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <Sidebar collapsible="icon">
         <SidebarHeader>
           <div className="flex items-center gap-2">
-            <SidebarTrigger />
             <div className="flex-1 overflow-hidden">
                 <h2 className="text-lg font-semibold whitespace-nowrap font-headline">DIMZ</h2>
             </div>
