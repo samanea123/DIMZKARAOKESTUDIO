@@ -1,9 +1,12 @@
 
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useKaraoke } from '@/context/KaraokeContext';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '../ui/button';
+import { Cast } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Define types for the Google Cast API to avoid using 'any'
 declare global {
@@ -18,6 +21,8 @@ export default function CastButton() {
   const { nowPlaying } = useKaraoke();
   const { toast } = useToast();
   const lastCastedVideoIdRef = useRef<string | null>(null);
+  const [isCastAvailable, setIsCastAvailable] = useState(false);
+  const [session, setSession] = useState<any>(null);
 
   useEffect(() => {
     const initializeCastApi = () => {
@@ -29,28 +34,30 @@ export default function CastButton() {
           autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
         });
         console.log('Cast options set.');
+        setIsCastAvailable(true);
+
+        const handleSessionStateChange = (event: any) => {
+            const currentSession = castContext.getCurrentSession();
+            setSession(currentSession);
+
+            if (event.sessionState === 'SESSION_ENDED' || event.sessionState === 'SESSION_START_FAILED') {
+                lastCastedVideoIdRef.current = null;
+            }
+             if ((event.sessionState === 'SESSION_STARTED' || event.sessionState === 'SESSION_RESUMED') && nowPlaying) {
+                castVideo(nowPlaying.youtubeVideoId, nowPlaying.title, nowPlaying.channelTitle, nowPlaying.thumbnails.high.url, currentSession);
+            }
+        };
 
         castContext.addEventListener(
-          window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
-          handleSessionStateChange
+            window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+            handleSessionStateChange
         );
+
       } catch (error) {
         console.error('Error initializing Cast framework:', error);
       }
     };
 
-    const handleSessionStateChange = (event: any) => {
-      const session = window.cast.framework.CastContext.getInstance().getCurrentSession();
-      if (event.sessionState === 'SESSION_ENDED' || event.sessionState === 'SESSION_START_FAILED') {
-        lastCastedVideoIdRef.current = null;
-      }
-      // Trigger a cast when a session is started or resumed
-      if ((event.sessionState === 'SESSION_STARTED' || event.sessionState === 'SESSION_RESUMED') && nowPlaying) {
-        castVideo(nowPlaying.youtubeVideoId, nowPlaying.title, nowPlaying.channelTitle, nowPlaying.thumbnails.high.url, session);
-      }
-    };
-
-    // The Cast SDK will call this global function when it's ready.
     window.__onGCastApiAvailable = (isAvailable) => {
       if (isAvailable) {
         initializeCastApi();
@@ -58,30 +65,27 @@ export default function CastButton() {
         console.error('Google Cast API not available.');
       }
     };
-    
-    // In case the script is already loaded and the callback has fired
+
     if (window.cast && window.cast.framework) {
         console.log('Cast API was already available.');
         initializeCastApi();
     }
+  }, [nowPlaying]);
 
-  }, [nowPlaying]); // Include nowPlaying to have access to the latest value in the event listener
-
-  const castVideo = (videoId: string, title: string, artist: string, imageUrl: string, session: any) => {
-    if (!session) {
+  const castVideo = (videoId: string, title: string, artist: string, imageUrl: string, activeSession: any) => {
+    if (!activeSession) {
       console.warn('Cannot cast video, no active session.');
       return;
     }
     
-    // Check if we are already casting this exact video
     if(lastCastedVideoIdRef.current === videoId) {
-        console.log(`Video ${videoId} is already being cast or was the last one cast. Skipping.`);
+        console.log(`Video ${videoId} is already being cast. Skipping.`);
         return;
     }
 
     console.log(`Casting video: ${title} (ID: ${videoId})`);
     
-    const mediaInfo = new window.chrome.cast.media.MediaInfo(videoId, 'video/x-youtube');
+    const mediaInfo = new window.chrome.cast.media.MediaInfo(`https://www.youtube.com/watch?v=${videoId}`, 'video/youtube');
     mediaInfo.metadata = new window.chrome.cast.media.GenericMediaMetadata();
     mediaInfo.metadata.title = title;
     mediaInfo.metadata.artist = artist;
@@ -89,10 +93,10 @@ export default function CastButton() {
     
     const request = new window.chrome.cast.media.LoadRequest(mediaInfo);
     
-    session.loadMedia(request).then(
+    activeSession.loadMedia(request).then(
       () => {
         console.log('✅ Media successfully loaded on the receiver.');
-        lastCastedVideoIdRef.current = videoId; // Mark this video as casted
+        lastCastedVideoIdRef.current = videoId;
       },
       (error: any) => {
         console.error('❌ Casting failed:', error);
@@ -101,34 +105,58 @@ export default function CastButton() {
           title: 'Cast Gagal',
           description: error.description || 'Tidak dapat memutar video di perangkat Cast.',
         });
-        lastCastedVideoIdRef.current = null; // Reset on failure
+        lastCastedVideoIdRef.current = null;
       }
     );
   };
 
   useEffect(() => {
-    const castSession = window.cast?.framework?.CastContext.getInstance().getCurrentSession();
-    if (castSession && nowPlaying) {
+    if (session && nowPlaying) {
       castVideo(
         nowPlaying.youtubeVideoId,
         nowPlaying.title,
         nowPlaying.channelTitle,
         nowPlaying.thumbnails.high.url,
-        castSession
+        session
       );
     }
-  }, [nowPlaying]); // This effect specifically handles changes to nowPlaying
+  }, [nowPlaying, session]);
+
+
+  const handleCastButtonClick = () => {
+    if (!isCastAvailable) {
+      toast({
+        variant: 'destructive',
+        title: 'Cast Tidak Tersedia',
+        description: 'Pastikan Anda menggunakan browser Chrome dan berada di jaringan yang sama dengan perangkat TV.',
+      });
+      return;
+    }
+
+    window.cast.framework.CastContext.getInstance().requestSession().catch((error: any) => {
+        console.error("Session request failed", error);
+        toast({
+            variant: 'destructive',
+            title: 'Gagal Terhubung',
+            description: 'Tidak dapat memulai sesi Cast. Pastikan TV Anda siap.',
+        });
+    });
+  };
+
 
   return (
-    // The google-cast-launcher component is provided by the Cast SDK.
-    // It automatically becomes visible and clickable when cast devices are found.
-    <google-cast-launcher style={{
-        width: '24px', 
-        height: '24px', 
-        cursor: 'pointer',
-        tintColor: 'hsl(var(--primary))',
-        '--disconnected-color': 'hsl(var(--foreground))',
-        '--connected-color': 'hsl(var(--primary))'
-      }} />
+    <Button 
+        variant="ghost" 
+        size="icon"
+        onClick={handleCastButtonClick}
+        disabled={!isCastAvailable}
+        className={cn(
+            "text-foreground/60 hover:text-primary disabled:opacity-50",
+            {"text-primary animate-pulse": !!session}
+        )}
+        title="Cast ke TV"
+    >
+        <Cast />
+    </Button>
   );
 }
