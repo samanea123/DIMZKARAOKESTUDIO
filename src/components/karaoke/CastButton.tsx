@@ -16,22 +16,23 @@ declare global {
 export default function CastButton() {
   const { nowPlaying } = useKaraoke();
   const { toast } = useToast();
-  const [isCastApiAvailable, setIsCastApiAvailable] = useState(false);
   const [castSession, setCastSession] = useState<any>(null);
   
   const lastCastedVideoIdRef = useRef<string | null>(null);
+  const castButtonRef = useRef<HTMLDivElement | null>(null);
 
   // 1. Initialize Google Cast Framework
   useEffect(() => {
     const initializeCastApi = () => {
+      console.log('Attempting to initialize Google Cast API...');
       if (window.cast && window.cast.framework) {
-        console.log('Google Cast API is available.');
         try {
           const context = window.cast.framework.CastContext.getInstance();
           context.setOptions({
             receiverApplicationId: window.chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
             autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
           });
+          console.log('Google Cast API options set.');
 
           const handleSessionStateChange = (event: any) => {
             console.log('Cast Session State Changed:', event.sessionState);
@@ -53,28 +54,36 @@ export default function CastButton() {
               setCastSession(currentSession);
               console.log("Reconnected to existing cast session");
           }
-          
-          setIsCastApiAvailable(true);
-          console.log('Google Cast API initialized successfully.');
 
         } catch (error) {
           console.error('Failed to initialize Cast framework:', error);
-          setIsCastApiAvailable(false);
         }
       } else {
-        console.log('Waiting for Google Cast API...');
+        console.log('window.cast or window.cast.framework not available yet.');
       }
     };
     
     // Set a global callback that the Cast script will call when it's ready.
     window.__onGCastApiAvailable = (isAvailable) => {
       if (isAvailable) {
+        console.log('Google Cast API is available via callback.');
         initializeCastApi();
       } else {
         console.error("Google Cast API not available");
-        setIsCastApiAvailable(false);
       }
     };
+
+    // Fallback if the callback doesn't fire (e.g., script already loaded)
+    const checkInterval = setInterval(() => {
+        if (window.cast && window.cast.framework) {
+            console.log('Google Cast API is available via interval check.');
+            initializeCastApi();
+            clearInterval(checkInterval);
+        }
+    }, 500);
+
+    return () => clearInterval(checkInterval);
+
   }, []); 
 
   // 2. Function to send video to TV
@@ -84,7 +93,8 @@ export default function CastButton() {
     console.log(`Casting YouTube video ID: ${videoId} to TV...`);
 
     const mediaInfo = new window.chrome.cast.media.MediaInfo(videoId, 'video/x-youtube');
-    mediaInfo.metadata = new window.chrome.cast.media.YouTubeMediaMetadata();
+    // For some reason, the metadata type needs to be generic for YT videos
+    mediaInfo.metadata = new window.chrome.cast.media.GenericMediaMetadata();
     mediaInfo.metadata.title = title;
     mediaInfo.metadata.artist = artist;
     mediaInfo.metadata.images = [{ 'url': imageUrl }];
@@ -101,7 +111,7 @@ export default function CastButton() {
         toast({
           variant: 'destructive',
           title: 'Cast Gagal',
-          description: 'Tidak dapat memutar video di perangkat Cast. Pastikan perangkat terhubung.',
+          description: error.description || 'Tidak dapat memutar video di perangkat Cast. Pastikan perangkat terhubung.',
         });
       }
     );
@@ -120,21 +130,19 @@ export default function CastButton() {
           castSession
         );
     }
-  }, [nowPlaying, castSession, toast]); 
-
-
-  if (!isCastApiAvailable) {
-    return <Cast className="text-muted-foreground/50" />;
-  }
+  }, [nowPlaying, castSession]); // removed `toast` from deps
 
   // 4. Display the official cast button from Google
   return (
-    <google-cast-launcher style={{
-      display: 'inline-block', 
-      width: '24px', 
-      height: '24px', 
-      cursor: 'pointer',
-      tintColor: 'hsl(var(--primary))'
-    }} />
+    <div ref={castButtonRef} style={{ display: 'inline-block' }}>
+      <google-cast-launcher style={{
+        width: '24px', 
+        height: '24px', 
+        cursor: 'pointer',
+        tintColor: 'hsl(var(--primary))',
+        '--disabled-color': '#707070',
+        '--connected-color': 'hsl(var(--primary))'
+      }} />
+    </div>
   );
 }
