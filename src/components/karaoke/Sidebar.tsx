@@ -19,7 +19,7 @@ export default function Sidebar() {
   ];
   
   const actionItems = [
-    { name: "Hubungkan ke TV", icon: <Tv2 size={18} />, onClick: openMonitor },
+    { name: "Tampilkan di Monitor", icon: <Tv2 size={18} />, onClick: openMonitor },
     { name: "Pengaturan", icon: <Settings size={18} />, onClick: () => {} },
   ];
 

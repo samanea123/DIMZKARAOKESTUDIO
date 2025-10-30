@@ -76,11 +76,15 @@ export default function MonitorPage() {
             />
 
             {!hasVideo && (
-                <div className="text-center text-muted-foreground">
+                <div className="text-center text-muted-foreground max-w-lg">
                     <Tv2 size={64} className="mx-auto mb-4" />
                     <h1 className="text-4xl font-headline text-white">Layar Monitor Karaoke</h1>
-                    <p className="mt-2 mb-8">Menunggu lagu untuk diputar...</p>
-                    <Button onClick={handleEnterFullscreen} size="lg">
+                    <p className="mt-2 mb-6">Menunggu lagu untuk diputar...</p>
+                    <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-4 text-sm text-gray-400">
+                        <p className="font-semibold text-white mb-2">Tips untuk Menampilkan di TV:</p>
+                        <p>Untuk menampilkan di TV, gunakan fitur 'Cast' dari menu browser Anda (Chrome, Edge) dan pilih tab ini untuk dicerminkan ke layar TV atau perangkat Chromecast Anda.</p>
+                    </div>
+                    <Button onClick={handleEnterFullscreen} size="lg" className="mt-8">
                         <Maximize className="mr-2" />
                         Masuk Layar Penuh
                     </Button>
