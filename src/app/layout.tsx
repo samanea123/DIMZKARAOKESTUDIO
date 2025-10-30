@@ -23,11 +23,11 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="font-body antialiased bg-background text-foreground">
+      <body className="font-body antialiased bg-background text-foreground overflow-x-hidden">
         <FirebaseClientProvider>
           <Script src="https://www.youtube.com/iframe_api" strategy="beforeInteractive"></Script>
           <Sidebar />
-          <main className="md:ml-64 p-4 sm:p-6">
+          <main className="md:ml-64 p-4 sm:p-6 min-h-screen">
             {children}
           </main>
           <Toaster />

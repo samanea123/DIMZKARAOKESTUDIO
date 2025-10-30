@@ -23,7 +23,7 @@ export default function Sidebar() {
     <>
       {/* 🔹 Tombol Hamburger (muncul hanya di HP/Tablet) */}
       <button
-        className="md:hidden fixed top-4 left-4 z-50 bg-gray-800 text-white p-2 rounded-lg shadow-lg"
+        className="md:hidden fixed top-4 left-4 z-50 bg-card text-card-foreground p-2 rounded-lg shadow-lg"
         onClick={toggleSidebar}
       >
         {isOpen ? <X size={22} /> : <Menu size={22} />}
