@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Menu, Home, Heart, Clock, Settings, Monitor as MonitorIcon } from "lucide-react";
+import { Menu, Home, Heart, Clock, Settings, Tv2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { useKaraoke } from "@/context/KaraokeContext";
 
@@ -16,6 +16,11 @@ export default function Sidebar() {
     { name: "Beranda", path: "/", icon: <Home size={20} /> },
     { name: "Favorit", path: "/favorites", icon: <Heart size={20} /> },
     { name: "Riwayat", path: "/history", icon: <Clock size={20} /> },
+  ];
+  
+  const actionItems = [
+    { name: "Hubungkan ke TV", icon: <Tv2 size={18} />, onClick: openMonitor },
+    { name: "Pengaturan", icon: <Settings size={18} />, onClick: () => {} },
   ];
 
   return (
@@ -60,20 +65,19 @@ export default function Sidebar() {
         </div>
 
         <div className="border-t border-border pt-4">
-            <button
+            {actionItems.map((item) => (
+              <button
+                key={item.name}
                 onClick={() => {
-                  openMonitor();
+                  if (item.onClick) item.onClick();
                   setOpen(false);
                 }}
                 className="w-full flex items-center gap-3 px-4 py-2 rounded-lg transition hover:bg-accent"
-            >
-                <MonitorIcon size={18} />
-                Buka Monitor
-            </button>
-             <button className="w-full flex items-center gap-3 px-4 py-2 rounded-lg transition hover:bg-accent">
-                <Settings size={18} />
-                Pengaturan
-            </button>
+              >
+                <span>{item.icon}</span>
+                <span>{item.name}</span>
+              </button>
+            ))}
         </div>
       </aside>
     </>
