@@ -2,7 +2,7 @@
 "use client";
 
 import VideoPlayer from "@/components/karaoke/VideoPlayer";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { QueueEntry } from "@/context/KaraokeContext";
 import { Button } from "@/components/ui/button";
 import { Maximize, Tv2 } from "lucide-react";
@@ -12,6 +12,15 @@ const NOW_PLAYING_STORAGE_KEY = 'dimz-karaoke-now-playing';
 
 export default function MonitorPage() {
     const [nowPlaying, setNowPlaying] = useState<QueueEntry | null>(null);
+
+    const handleEnterFullscreen = useCallback(() => {
+        const elem = document.documentElement;
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen().catch(err => {
+                console.error("Error attempting to enable full-screen mode:", err.message, err.name);
+            });
+        }
+    }, []);
 
     // Initial load from localStorage
     useEffect(() => {
@@ -29,7 +38,10 @@ export default function MonitorPage() {
             if (event.key === NOW_PLAYING_STORAGE_KEY) {
                 try {
                     if (event.newValue) {
-                        setNowPlaying(JSON.parse(event.newValue));
+                        const newSong = JSON.parse(event.newValue);
+                        setNowPlaying(newSong);
+                        // Automatically try to go fullscreen when a new song starts playing
+                        handleEnterFullscreen();
                     } else {
                         setNowPlaying(null);
                     }
@@ -43,17 +55,15 @@ export default function MonitorPage() {
         return () => {
             window.removeEventListener('storage', handleStorageChange);
         };
-    }, []);
+    }, [handleEnterFullscreen]);
 
-
-    const handleEnterFullscreen = () => {
-        const elem = document.documentElement;
-        if (elem.requestFullscreen) {
-            elem.requestFullscreen().catch(err => {
-                console.error("Error attempting to enable full-screen mode:", err.message, err.name);
-            });
+    // Automatically try to go fullscreen when the first song appears
+    useEffect(() => {
+        if (nowPlaying) {
+            handleEnterFullscreen();
         }
-    };
+    }, [nowPlaying, handleEnterFullscreen]);
+
 
     const hasVideo = !!nowPlaying;
 
