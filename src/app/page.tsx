@@ -1,7 +1,6 @@
 
 "use client";
 
-import AppLayout from "@/components/karaoke/AppLayout";
 import Header from "@/components/karaoke/Header";
 import SongQueue from "@/components/karaoke/SongQueue";
 import SongSearch from "@/components/karaoke/SongSearch";
@@ -13,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 function HomePageContent() {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
-      <div className="flex-1 flex flex-col gap-6 overflow-y-auto p-4 md:p-6 lg:p-8 pt-20 lg:pt-8">
+      <div className="flex-1 flex flex-col gap-6 overflow-y-auto">
         <Header />
         <SongSearch />
         <Separator />
@@ -37,9 +36,7 @@ function HomePageContent() {
 export default function Home() {
   return (
     <KaraokeProvider>
-      <AppLayout>
-        <HomePageContent />
-      </AppLayout>
+      <HomePageContent />
     </KaraokeProvider>
   );
 }

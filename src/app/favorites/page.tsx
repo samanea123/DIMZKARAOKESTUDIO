@@ -1,7 +1,6 @@
 
 "use client";
 
-import AppLayout from "@/components/karaoke/AppLayout";
 import Favorites from "@/components/karaoke/Favorites";
 import { KaraokeProvider } from "@/context/KaraokeContext";
 
@@ -19,9 +18,7 @@ function FavoritesPageContent() {
 export default function FavoritesPage() {
   return (
     <KaraokeProvider>
-      <AppLayout>
         <FavoritesPageContent />
-      </AppLayout>
     </KaraokeProvider>
   );
 }

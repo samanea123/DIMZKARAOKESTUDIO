@@ -1,12 +1,8 @@
 
 "use client";
 
-import AppLayout from "@/components/karaoke/AppLayout";
-import Favorites from "@/components/karaoke/Favorites";
-import Header from "@/components/karaoke/Header";
 import History from "@/components/karaoke/History";
 import { KaraokeProvider } from "@/context/KaraokeContext";
-import { Separator } from "@/components/ui/separator";
 
 function HistoryPageContent() {
   return (
@@ -22,9 +18,7 @@ function HistoryPageContent() {
 export default function HistoryPage() {
   return (
     <KaraokeProvider>
-      <AppLayout>
         <HistoryPageContent />
-      </AppLayout>
     </KaraokeProvider>
   );
 }
