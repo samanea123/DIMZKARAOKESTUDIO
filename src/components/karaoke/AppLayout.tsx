@@ -24,6 +24,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { useKaraoke } from "@/context/KaraokeContext";
 import CastButton from "./CastButton";
+import MonitorController from "./MonitorController";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { activeTab, setActiveTab } = useKaraoke();
@@ -61,6 +62,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </SidebarMenuItem>
              <SidebarMenuItem>
               <CastButton />
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+                <MonitorController />
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Pengaturan">

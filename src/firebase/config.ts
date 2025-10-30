@@ -1,8 +1,15 @@
-export const firebaseConfig = {
-  "projectId": "studio-5342684498-154ad",
-  "appId": "1:835505489767:web:78d2c34c3dc241e9b251c2",
-  "apiKey": "AIzaSyAWGNqmYqoxIDv-AO2V7cor2nMXQ7w68t8",
-  "authDomain": "studio-5342684498-154ad.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "835505489767"
+import { initializeApp, getApps, getApp } from "firebase/app";
+
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
+
+// ✅ Gunakan instance yang sudah ada, hindari error multiple initialization
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+export default app;
