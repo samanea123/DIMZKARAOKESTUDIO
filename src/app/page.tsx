@@ -11,6 +11,7 @@ import TopHits from "@/components/karaoke/TopHits";
 import { KaraokeProvider, useKaraoke } from "@/context/KaraokeContext";
 import VideoPlayer from "@/components/karaoke/VideoPlayer";
 import { Separator } from "@/components/ui/separator";
+import Script from "next/script";
 
 function KaraokeContent() {
   const { activeTab } = useKaraoke();
@@ -58,6 +59,10 @@ function KaraokeContent() {
 export default function Home() {
   return (
     <KaraokeProvider>
+       <Script
+        src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"
+        strategy="lazyOnload"
+      />
       <KaraokeContent />
     </KaraokeProvider>
   );

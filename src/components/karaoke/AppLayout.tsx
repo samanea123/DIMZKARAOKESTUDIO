@@ -7,7 +7,6 @@ import {
   Star,
   Settings,
   History as HistoryIcon,
-  Monitor
 } from "lucide-react";
 import type { ReactNode } from "react";
 import {
@@ -24,7 +23,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { useKaraoke } from "@/context/KaraokeContext";
-import MonitorController from "./MonitorController";
+import CastButton from "./CastButton";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { activeTab, setActiveTab } = useKaraoke();
@@ -61,7 +60,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               </SidebarMenuButton>
             </SidebarMenuItem>
              <SidebarMenuItem>
-              <MonitorController />
+              <CastButton />
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Pengaturan">
