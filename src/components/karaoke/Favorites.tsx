@@ -28,7 +28,7 @@ export default function Favorites() {
   const { favorites, playFromFavorites, addOrRemoveFavorite, isFavorite, playNextFromAnywhere } = useKaraoke();
 
   return (
-    <Card className="h-full flex flex-col mt-[-2rem] xl:mt-0">
+    <Card className="h-full flex flex-col">
       <CardHeader>
         <div>
           <CardTitle className="font-headline flex items-center gap-2">

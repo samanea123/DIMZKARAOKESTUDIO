@@ -12,7 +12,6 @@ import { useCollection } from "@/firebase";
 const NOW_PLAYING_STORAGE_KEY = 'dimz-karaoke-now-playing';
 
 export type FilterMode = "karaoke" | "original";
-export type ActiveTab = "home" | "history" | "settings" | "favorites";
 
 export interface YoutubeVideo {
   id: {
@@ -58,8 +57,6 @@ interface KaraokeContextType {
   isQueueLoading: boolean;
   songHistory: HistoryEntry[];
   favorites: FavoriteEntry[];
-  activeTab: ActiveTab;
-  setActiveTab: (tab: ActiveTab) => void;
   addSongToQueue: (song: YoutubeVideo, mode: FilterMode) => void;
   addSongToPlayNext: (song: QueueEntry) => void;
   removeSongFromQueue: (docId: string) => void;
@@ -86,7 +83,6 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
 
   const [songHistory, setSongHistory] = useState<HistoryEntry[]>([]);
   const [favorites, setFavorites] = useState<FavoriteEntry[]>([]);
-  const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [monitorWindow, setMonitorWindow] = useState<Window | null>(null);
   const { toast } = useToast();
 
@@ -366,8 +362,6 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
         isQueueLoading,
         songHistory,
         favorites,
-        activeTab,
-        setActiveTab,
         addSongToQueue, 
         addSongToPlayNext,
         removeSongFromQueue, 
