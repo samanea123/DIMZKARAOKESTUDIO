@@ -9,6 +9,8 @@ import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlo
 import type { UseCollectionResult } from "@/firebase/firestore/use-collection";
 import { useCollection } from "@/firebase";
 
+const NOW_PLAYING_STORAGE_KEY = 'dimz-karaoke-now-playing';
+
 export type FilterMode = "karaoke" | "original";
 export type ActiveTab = "home" | "history" | "settings" | "favorites";
 
@@ -119,13 +121,19 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
 
   const nowPlaying = queue && queue.length > 0 ? queue[0] : undefined;
 
+  // Sync nowPlaying with localStorage
   useEffect(() => {
-    if (nowPlaying && (!monitorWindow || monitorWindow.closed)) {
-      // Temporarily disable auto-opening monitor to avoid pop-up blockers
-      // openMonitor();
+    try {
+      if (nowPlaying) {
+        localStorage.setItem(NOW_PLAYING_STORAGE_KEY, JSON.stringify(nowPlaying));
+      } else {
+        localStorage.removeItem(NOW_PLAYING_STORAGE_KEY);
+      }
+    } catch (error) {
+      console.error("Could not write to localStorage", error);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nowPlaying]);
+
 
   const openMonitor = () => {
     if (monitorWindow && !monitorWindow.closed) {
@@ -195,8 +203,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
   const addSongToPlayNext = async (song: QueueEntry) => {
     if (!db || !queue || !user) return;
     
-    // Jika ada lagu yang sedang diputar, letakkan setelahnya. Jika tidak, letakkan di urutan kedua.
-    const newOrder = nowPlaying ? nowPlaying.order + 0.5 : 2;
+    const newOrder = nowPlaying ? nowPlaying.order + 0.5 : (queue[0]?.order || 0) + 0.5;
 
     const docRef = doc(db, "users", user.uid, "songQueueItems", song.id);
     updateDocumentNonBlocking(docRef, { order: newOrder });
@@ -213,8 +220,7 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
       if (songInQueue) {
           await addSongToPlayNext(songInQueue);
       } else {
-          // Jika ada lagu yang sedang diputar, letakkan setelahnya. Jika tidak, letakkan di urutan kedua.
-          const newOrder = nowPlaying ? nowPlaying.order + 0.5 : 2;
+          const newOrder = nowPlaying ? nowPlaying.order + 0.5 : (queue[0]?.order || new Date().getTime()) + 0.5;
           const newEntry = {
               youtubeVideoId: song.id.videoId,
               videoUrl: `https://www.youtube.com/embed/${song.id.videoId}`,
@@ -246,17 +252,15 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
     
     const songToPlay = queue.find(s => s.id === docId);
     if (!songToPlay) return;
-
-    // Jika lagu sudah diputar, tidak perlu lakukan apa-apa, VideoPlayer akan handle replay
+    
     if (nowPlaying?.id === docId) {
-      // VideoPlayer will handle this internally if needed.
-      // Forcing a re-render by changing context state is an option if direct player manipulation is not preferred.
+       // The player can handle replaying, but we can also force it by re-setting the state if needed
+      // For now, we assume the player's replay button works, or the user can use the UI.
+      // If we want to force a replay from here, we might need a way to signal the player.
       return;
     }
 
-    // Jika tidak ada lagu yang sedang diputar, set lagu ini sebagai lagu pertama
-    // Jika ada, set ordernya lebih kecil dari lagu yang sedang diputar
-    const newOrder = nowPlaying ? nowPlaying.order - 1 : new Date().getTime();
+    const newOrder = nowPlaying ? nowPlaying.order - 1 : (queue[0]?.order || new Date().getTime()) - 1;
     
     const docRef = doc(db, "users", user.uid, "songQueueItems", docId);
     updateDocumentNonBlocking(docRef, { order: newOrder });
