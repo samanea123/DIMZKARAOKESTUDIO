@@ -83,7 +83,6 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
 
   const [songHistory, setSongHistory] = useState<HistoryEntry[]>([]);
   const [favorites, setFavorites] = useState<FavoriteEntry[]>([]);
-  const [monitorWindow, setMonitorWindow] = useState<Window | null>(null);
   const { toast } = useToast();
 
   const queueQuery = useMemoFirebase(() => {
@@ -132,14 +131,9 @@ export function KaraokeProvider({ children }: { children: ReactNode }) {
 
 
   const openMonitor = () => {
-    if (monitorWindow && !monitorWindow.closed) {
-        monitorWindow.focus();
-    } else {
-        const width = window.screen.width;
-        const height = window.screen.height;
-        const newWindow = window.open('/monitor', 'karaoke-monitor', `width=${width},height=${height}`);
-        setMonitorWindow(newWindow);
-    }
+    const width = window.screen.width;
+    const height = window.screen.height;
+    window.open('/monitor', 'karaoke-monitor', `width=${width},height=${height}`);
   };
 
 

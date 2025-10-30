@@ -3,14 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Menu, Home, Heart, Clock, Settings, Tv2 } from "lucide-react";
+import { Menu, Home, Heart, Clock, Settings, Tv2, Monitor } from "lucide-react";
 import { Button } from "../ui/button";
 import { useKaraoke } from "@/context/KaraokeContext";
 
 export default function Sidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const { openMonitor } = useKaraoke();
 
   const menuItems = [
     { name: "Beranda", path: "/", icon: <Home size={20} /> },
@@ -19,8 +18,9 @@ export default function Sidebar() {
   ];
   
   const actionItems = [
-    { name: "Tampilkan di Monitor", icon: <Tv2 size={18} />, onClick: openMonitor },
-    { name: "Pengaturan", icon: <Settings size={18} />, onClick: () => {} },
+    { name: "Hubungkan ke TV", path: "/connect", icon: <Tv2 size={18} /> },
+    { name: "Buka Monitor", path: "/monitor", icon: <Monitor size={18} /> },
+    { name: "Pengaturan", path: "/settings", icon: <Settings size={18} /> },
   ];
 
   return (
@@ -66,17 +66,17 @@ export default function Sidebar() {
 
         <div className="border-t border-border pt-4">
             {actionItems.map((item) => (
-              <button
+              <Link
                 key={item.name}
-                onClick={() => {
-                  if (item.onClick) item.onClick();
-                  setOpen(false);
-                }}
+                href={item.path}
+                target={item.path === '/monitor' ? '_blank' : '_self'}
+                rel={item.path === '/monitor' ? 'noopener noreferrer' : ''}
+                onClick={() => setOpen(false)}
                 className="w-full flex items-center gap-3 px-4 py-2 rounded-lg transition hover:bg-accent"
               >
                 <span>{item.icon}</span>
                 <span>{item.name}</span>
-              </button>
+              </Link>
             ))}
         </div>
       </aside>
