@@ -1,93 +1,61 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-// @ts-nocheck
+import { useEffect } from "react";
 
 export default function ConnectPage() {
-  const [castReady, setCastReady] = useState(false);
-
   useEffect(() => {
-    // Fungsi untuk memuat Google Cast SDK
-    const loadCastSDK = () => {
-      if (!window.chrome?.cast || !window.cast) {
-        const script = document.createElement("script");
-        script.src =
-          "https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1";
-        script.async = true;
-        document.body.appendChild(script);
-        
-        script.onload = () => {
-          // SDK sudah dimuat, sekarang inisialisasi framework
-          initializeCastFramework();
-        };
-      } else {
-        initializeCastFramework();
-      }
-    };
-    
-    // Fungsi untuk inisialisasi Cast Framework setelah SDK siap
-    const initializeCastFramework = () => {
-       window['__onGCastApiAvailable'] = function(isAvailable) {
-        if (isAvailable) {
-          try {
-            const context = window.cast.framework.CastContext.getInstance();
-            context.setOptions({
-              receiverApplicationId: window.chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-              autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
-            });
-            console.log("✅ Cast Framework Initialized");
-            setCastReady(true);
-          } catch (err) {
-            console.error("❌ Gagal inisialisasi Cast Framework:", err);
-          }
-        }
-      };
-    };
-
-    loadCastSDK();
+    // ✅ Muat Google Cast SDK bila belum ada
+    if (!window.chrome?.cast || !window.cast) {
+      const s = document.createElement("script");
+      s.src =
+        "https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1";
+      s.onload = () => console.log("✅ Cast SDK Loaded");
+      document.body.appendChild(s);
+    }
   }, []);
 
   const handleCast = () => {
-    if (!castReady) {
-      alert(
-        "⚠️ Fitur Cast belum siap. Mohon tunggu atau pastikan TV Anda mendukung Google Cast."
-      );
+    if (!window.cast || !window.chrome?.cast) {
+      alert("Chromecast belum tersedia di jaringan ini.");
       return;
     }
-    
-    const context = window.cast.framework.CastContext.getInstance();
 
-    context.requestSession().then(session => {
-        const mediaInfo = new window.chrome.cast.media.MediaInfo(
-          "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-          "video/mp4"
-        );
-        const request = new window.chrome.cast.media.LoadRequest(mediaInfo);
-        
-        session.loadMedia(request)
-          .then(() => console.log("🎬 Video sedang dikirim ke TV..."))
-          .catch((err) => console.error("❌ Gagal mengirim media:", err));
-
-    }).catch(err => {
-      console.error("❌ Gagal memulai sesi Cast:", err);
-      if (err.code === 'cancel') return; // User membatalkan dialog
-      alert("Gagal memulai sesi Cast. Pastikan Anda telah memilih perangkat TV.");
+    const ctx = window.cast.framework.CastContext.getInstance();
+    ctx.setOptions({
+      receiverApplicationId:
+        window.chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+      autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
     });
+
+    const session = ctx.getCurrentSession();
+    if (!session) {
+      alert("Pilih perangkat TV dulu dari ikon Cast di browser.");
+      return;
+    }
+
+    const mediaInfo = new window.chrome.cast.media.MediaInfo(
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      "video/mp4"
+    );
+
+    const request = new window.chrome.cast.media.LoadRequest(mediaInfo);
+    session
+      .loadMedia(request)
+      .then(() => console.log("🎬 Video dikirim ke TV"))
+      .catch((err) => console.error("❌ Gagal kirim ke TV:", err));
   };
 
   return (
     <div className="p-6 text-white">
-      <h1 className="text-2xl font-bold mb-4 font-headline">Hubungkan ke TV</h1>
+      <h1 className="text-2xl font-bold mb-4">Hubungkan ke TV</h1>
       <p className="text-gray-300 mb-6">
-        Gunakan tombol di bawah untuk mengirim video ke TV melalui Chromecast
-        atau Smart TV yang mendukung fitur Google Cast.
+        Tekan tombol di bawah untuk mengirim video ke TV melalui Chromecast
+        atau Smart TV yang mendukung Cast.
       </p>
 
       <button
         onClick={handleCast}
-        disabled={!castReady}
-        className="bg-primary hover:bg-primary/90 disabled:bg-gray-500 px-6 py-3 rounded-xl font-semibold text-primary-foreground shadow-lg transition-all"
+        className="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-xl font-semibold text-white shadow-lg transition-all"
       >
         🎥 Hubungkan & Putar di TV
       </button>
