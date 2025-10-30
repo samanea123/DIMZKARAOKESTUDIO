@@ -27,23 +27,28 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
         playerRef.current = null;
       }
       
-      // @ts-ignore - YT.Player
-      playerRef.current = new window.YT.Player("youtube-player-iframe", {
-        height: '100%',
-        width: '100%',
-        videoId: id,
-        playerVars: {
-          autoplay: 1,
-          controls: isMonitor ? 0 : 1,
-          fs: isMonitor ? 0 : 1,
-          modestbranding: 1,
-          rel: 0,
-        },
-        events: {
-          onStateChange: onPlayerStateChange,
-          onError: onPlayerError,
-        },
-      });
+      try {
+        // @ts-ignore - YT.Player
+        playerRef.current = new window.YT.Player("youtube-player-iframe", {
+          height: '100%',
+          width: '100%',
+          videoId: id,
+          playerVars: {
+            autoplay: 1,
+            controls: isMonitor ? 0 : 1,
+            fs: isMonitor ? 0 : 1,
+            modestbranding: 1,
+            rel: 0,
+          },
+          events: {
+            onStateChange: onPlayerStateChange,
+            onError: onPlayerError,
+          },
+        });
+      } catch (e) {
+          // This can happen if the YT API is not ready yet.
+          // The API ready listener will handle it.
+      }
     };
 
     // Fungsi yang dipanggil saat status pemutar berubah
@@ -80,20 +85,26 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
 
     // Logika utama untuk memuat video
     if (videoId) {
-      // @ts-ignore
+       // @ts-ignore
       if (typeof window.YT === 'undefined' || typeof window.YT.Player === 'undefined') {
         // Jika YouTube IFrame API belum siap, tunggu
          // @ts-ignore
         window.onYouTubeIframeAPIReady = () => createPlayer(videoId);
       } else {
         // Jika API sudah siap, langsung buat pemutar
-        createPlayer(videoId);
+        if(document.getElementById("youtube-player-iframe")){
+          createPlayer(videoId);
+        }
       }
     } else {
       // Jika tidak ada videoId, hancurkan pemutar yang ada
       if (playerRef.current) {
-        playerRef.current.destroy();
-        playerRef.current = null;
+        try {
+            playerRef.current.destroy();
+            playerRef.current = null;
+        } catch(e) {
+            // Player might already be gone
+        }
       }
     }
     
@@ -110,7 +121,7 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
     const elem = document.documentElement;
     if (elem.requestFullscreen) {
         elem.requestFullscreen().catch(err => {
-            // Kita sudah menangani error ini, jadi tidak perlu console.error lagi
+            console.error("Error attempting to enable full-screen mode:", err.message, err.name);
         });
     }
   };
@@ -119,26 +130,23 @@ export default function VideoPlayer({ isMonitor = false }: VideoPlayerProps) {
 
   // Tampilan untuk halaman Monitor
   if (isMonitor) {
-    if (hasVideo) {
       return (
-        <div className="h-screen w-screen bg-black">
-          <div id="youtube-player-iframe" className="w-full h-full" />
+        <div className="flex flex-col h-screen w-screen bg-black items-center justify-center text-white p-8">
+            <div id="youtube-player-iframe" className={cn("w-full h-full", !hasVideo && "hidden")} />
+
+            {!hasVideo && (
+                <div className="text-center text-muted-foreground">
+                    <Tv2 size={64} className="mx-auto mb-4" />
+                    <h1 className="text-4xl font-headline text-white">Layar Monitor Karaoke</h1>
+                    <p className="mt-2 mb-8">Menunggu lagu untuk diputar...</p>
+                    <Button onClick={handleEnterFullscreen} size="lg">
+                        <Maximize className="mr-2" />
+                        Masuk Layar Penuh
+                    </Button>
+                </div>
+            )}
         </div>
       );
-    }
-    return (
-      <div className="flex flex-col h-screen w-screen bg-black items-center justify-center text-white p-8">
-        <div className="text-center text-muted-foreground">
-          <Tv2 size={64} className="mx-auto mb-4" />
-          <h1 className="text-4xl font-headline text-white">Layar Monitor Karaoke</h1>
-          <p className="mt-2 mb-8">Menunggu lagu untuk diputar...</p>
-          <Button onClick={handleEnterFullscreen} size="lg">
-            <Maximize className="mr-2" />
-            Masuk Layar Penuh
-          </Button>
-        </div>
-      </div>
-    );
   }
 
   // Tampilan untuk pemutar mini di halaman utama
