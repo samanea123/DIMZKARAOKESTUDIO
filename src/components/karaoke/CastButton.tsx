@@ -19,31 +19,31 @@ export default function CastButton() {
   const [isCastApiAvailable, setIsCastApiAvailable] = useState(false);
   const [castSession, setCastSession] = useState<any>(null);
   
-  // Ref untuk melacak ID video terakhir yang berhasil di-cast
+  // Ref to track the last successfully cast video ID
   const lastCastedVideoIdRef = useRef<string | null>(null);
 
-  // 1. Inisialisasi Google Cast Framework
+  // 1. Initialize Google Cast Framework
   useEffect(() => {
-    // Fungsi ini akan dipanggil ketika script Cast dari Google sudah siap
+    // This function will be called when the Cast script from Google is ready
     window.__onGCastApiAvailable = (isAvailable) => {
         if (isAvailable) {
             console.log('Google Cast API is available.');
             try {
-              // Dapatkan instance CastContext
+              // Get CastContext instance
               const context = window.cast.framework.CastContext.getInstance();
-              // Konfigurasi receiver (menggunakan receiver default YouTube dari Google)
+              // Configure the receiver (using Google's default YouTube receiver)
               context.setOptions({
                 receiverApplicationId: window.chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
                 autoJoinPolicy: window.chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
               });
 
-              // 2. Tambahkan listener untuk memantau status sesi (terhubung/terputus)
+              // 2. Add listener to monitor session status (connected/disconnected)
               const handleSessionStateChange = (event: any) => {
                 console.log('Cast Session State Changed:', event.sessionState);
                 const currentSession = context.getCurrentSession();
-                setCastSession(currentSession); // Update state dengan sesi saat ini
+                setCastSession(currentSession); // Update state with the current session
                 
-                // Jika sesi berakhir, reset video yang terakhir di-cast
+                // If the session ends, reset the last cast video
                 if (event.sessionState === 'SESSION_ENDED' || event.sessionState === 'SESSION_START_FAILED') {
                   lastCastedVideoIdRef.current = null; 
                 }
@@ -54,7 +54,7 @@ export default function CastButton() {
                 handleSessionStateChange
               );
               
-              // Cek apakah sudah ada sesi yang aktif saat komponen dimuat
+              // Check if a session is already active when the component loads
               const currentSession = context.getCurrentSession();
               if (currentSession) {
                   setCastSession(currentSession);
@@ -75,13 +75,13 @@ export default function CastButton() {
     };
   }, []); 
 
-  // 3. Fungsi untuk mengirim video ke TV
+  // 3. Function to send video to TV
   const castToTV = (videoId: string, title: string, artist: string, imageUrl: string, session: any) => {
     if (!session) return;
 
     console.log(`Casting YouTube video ID: ${videoId} to TV...`);
 
-    // Buat objek MediaInfo khusus untuk YouTube
+    // Create a MediaInfo object specifically for YouTube
     const mediaInfo = new window.chrome.cast.media.MediaInfo(videoId, 'video/x-youtube');
     mediaInfo.metadata = new window.chrome.cast.media.YouTubeMediaMetadata();
     mediaInfo.metadata.title = title;
@@ -90,15 +90,15 @@ export default function CastButton() {
     
     const request = new window.chrome.cast.media.LoadRequest(mediaInfo);
     
-    // Kirim permintaan untuk memuat media di receiver (TV)
+    // Send the request to load the media on the receiver (TV)
     session.loadMedia(request).then(
       () => {
-        console.log('✅ Media berhasil di-cast ke TV');
-        // Tandai video ini sudah berhasil di-cast untuk menghindari pengiriman ulang
+        console.log('✅ Media successfully cast to TV');
+        // Mark this video as successfully cast to avoid resending
         lastCastedVideoIdRef.current = videoId; 
       },
       (error: any) => {
-        console.error('❌ Gagal cast:', error);
+        console.error('❌ Cast failed:', error);
         toast({
           variant: 'destructive',
           title: 'Cast Gagal',
@@ -108,15 +108,15 @@ export default function CastButton() {
     );
   };
   
-  // 4. Efek ini berjalan setiap kali `nowPlaying` atau `castSession` berubah
+  // 4. This effect runs whenever `nowPlaying` or `castSession` changes
   useEffect(() => {
-    // Ambil videoId dari lagu yang sedang diputar
+    // Get the videoId from the currently playing song
     const videoId = nowPlaying?.youtubeVideoId;
     
-    // Kondisi untuk melakukan cast:
-    // - Ada sesi cast yang aktif
-    // - Ada lagu yang sedang diputar (videoId tidak kosong)
-    // - Lagu yang sedang diputar adalah lagu baru (belum pernah di-cast di sesi ini)
+    // Conditions to perform cast:
+    // - There is an active cast session
+    // - There is a song playing (videoId is not empty)
+    // - The playing song is a new song (not cast in this session yet)
     if (castSession && videoId && nowPlaying && videoId !== lastCastedVideoIdRef.current) {
         castToTV(
           videoId, 
@@ -127,23 +127,23 @@ export default function CastButton() {
         );
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nowPlaying?.youtubeVideoId, castSession]); // Dependensi: hanya video ID dan sesi cast
+  }, [nowPlaying?.youtubeVideoId, castSession]); // Dependencies: only video ID and cast session
 
 
   if (!isCastApiAvailable) {
-    // Tombol Cast akan tampak non-aktif jika API belum siap
+    // The Cast button will appear inactive if the API is not ready
     return <Cast className="text-muted-foreground/50" />;
   }
 
-  // 5. Tampilkan tombol cast resmi dari Google (<google-cast-launcher>)
-  // Tombol ini secara otomatis akan menampilkan ikon Cast dan membuka dialog pemilihan perangkat.
+  // 5. Display the official cast button from Google (<google-cast-launcher>)
+  // This button will automatically display the Cast icon and open the device selection dialog.
   return (
     <google-cast-launcher style={{
       display: 'inline-block', 
       width: '24px', 
       height: '24px', 
       cursor: 'pointer', 
-      // Tombol ini akan otomatis berubah warna saat terhubung
+      // This button will automatically change color when connected
       '--cast-button-color': 'hsl(var(--primary))' 
     }} />
   );
