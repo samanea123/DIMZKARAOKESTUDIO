@@ -79,10 +79,7 @@ export default function CastButton() {
 
     console.log(`Casting YouTube video ID: ${videoId} to TV...`);
 
-    // MediaInfo untuk YouTube butuh tipe khusus
     const mediaInfo = new window.chrome.cast.media.MediaInfo(videoId, 'video/x-youtube');
-    
-    // Metadata untuk menampilkan info di TV
     mediaInfo.metadata = new window.chrome.cast.media.YouTubeMediaMetadata();
     mediaInfo.metadata.title = title;
     mediaInfo.metadata.artist = artist;
@@ -110,7 +107,7 @@ export default function CastButton() {
   useEffect(() => {
     const videoId = nowPlaying?.youtubeVideoId;
     // Cek jika ada sesi, ada video, dan video tersebut belum pernah di-cast di sesi ini
-    if (castSession && videoId && videoId !== lastCastedVideoIdRef.current) {
+    if (castSession && videoId && nowPlaying && videoId !== lastCastedVideoIdRef.current) {
         castToTV(
           videoId, 
           nowPlaying.title, 
