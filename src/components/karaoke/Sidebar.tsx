@@ -1,81 +1,81 @@
-
 "use client";
 
-import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Home, Clock, Heart, Monitor, Settings, HelpCircle } from "lucide-react";
-import Image from "next/image";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-
-const menuItems = [
-  { name: "Beranda", href: "/", icon: Home },
-  { name: "Riwayat", href: "/history", icon: Clock },
-  { name: "Favorit", href: "/favorites", icon: Heart },
-];
+import { usePathname } from "next/navigation";
+import { useState } from "react";
+import { Menu, Home, Heart, Clock, Settings, Monitor as MonitorIcon } from "lucide-react";
+import { Button } from "../ui/button";
+import { useKaraoke } from "@/context/KaraokeContext";
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const { openMonitor } = useKaraoke();
+
+  const menuItems = [
+    { name: "Beranda", path: "/", icon: <Home size={20} /> },
+    { name: "Favorit", path: "/favorites", icon: <Heart size={20} /> },
+    { name: "Riwayat", path: "/history", icon: <Clock size={20} /> },
+  ];
 
   return (
-    <div className="fixed top-0 left-0 h-screen w-64 bg-card text-card-foreground flex-col z-50 hidden md:flex">
-      {/* Logo */}
-      <div className="text-2xl font-bold text-center py-6 border-b border-border font-headline">
-        DIMZ
-      </div>
+    <>
+      {/* Tombol toggle (khusus untuk layar kecil) */}
+      <Button
+        variant="outline"
+        size="icon"
+        className="lg:hidden fixed top-4 left-4 z-50 bg-card/80 backdrop-blur-sm"
+        onClick={() => setOpen(!open)}
+      >
+        <Menu size={24} />
+      </Button>
 
-      {/* Menu Utama */}
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-        {menuItems.map(({ name, href, icon: Icon }) => (
-          <Link
-            key={name}
-            href={href}
-            className={`flex items-center gap-3 px-4 py-2 rounded-lg transition ${
-              pathname === href
-                ? "bg-primary text-primary-foreground"
-                : "text-foreground hover:bg-accent"
-            }`}
-          >
-            <Icon size={18} />
-            {name}
-          </Link>
-        ))}
-        {/* Separator for other actions */}
-         <div className="pt-2">
-            <a
-                href="/monitor"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`flex items-center gap-3 px-4 py-2 rounded-lg transition text-foreground hover:bg-accent`}
-            >
-                <Monitor size={18} />
-                Buka Monitor
-            </a>
+      {/* Sidebar */}
+      <aside
+        className={`fixed top-0 left-0 h-full w-64 bg-card text-card-foreground p-4 flex flex-col justify-between transition-transform duration-300 z-40 ${
+          open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }`}
+      >
+        <div>
+           <div className="text-2xl font-bold text-center py-4 border-b border-border font-headline mb-4">
+                DIMZ
+            </div>
+          <nav className="flex-1 space-y-2 overflow-y-auto">
+            {menuItems.map((item) => (
+              <Link
+                key={item.path}
+                href={item.path}
+                onClick={() => setOpen(false)}
+                className={`flex items-center gap-3 px-4 py-2 rounded-lg transition ${
+                  pathname === item.path
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-accent"
+                }`}
+              >
+                <span>{item.icon}</span>
+                <span>{item.name}</span>
+              </Link>
+            ))}
+          </nav>
+        </div>
+
+        <div className="border-t border-border pt-4">
             <button
-                className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition text-foreground hover:bg-accent`}
+                onClick={() => {
+                  openMonitor();
+                  setOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2 rounded-lg transition hover:bg-accent"
             >
+                <MonitorIcon size={18} />
+                Buka Monitor
+            </button>
+             <button className="w-full flex items-center gap-3 px-4 py-2 rounded-lg transition hover:bg-accent">
                 <Settings size={18} />
                 Pengaturan
             </button>
         </div>
-      </nav>
-
-      {/* Bantuan & User */}
-      <div className="border-t border-border p-4 space-y-3">
-        <button className="flex items-center gap-2 text-muted-foreground hover:text-foreground w-full">
-          <HelpCircle size={18} /> Bantuan
-        </button>
-
-        <div className="flex items-center gap-3 mt-3">
-            <Avatar className="size-8">
-                <AvatarImage src="https://picsum.photos/seed/user/100/100" />
-                <AvatarFallback>U</AvatarFallback>
-            </Avatar>
-          <div>
-            <p className="text-sm font-medium">User</p>
-            <p className="text-xs text-muted-foreground">user@email.com</p>
-          </div>
-        </div>
-      </div>
-    </div>
+      </aside>
+    </>
   );
 }

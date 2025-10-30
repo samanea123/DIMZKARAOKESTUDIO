@@ -9,12 +9,11 @@ import TopHits from "@/components/karaoke/TopHits";
 import { KaraokeProvider } from "@/context/KaraokeContext";
 import VideoPlayer from "@/components/karaoke/VideoPlayer";
 import { Separator } from "@/components/ui/separator";
-import Script from "next/script";
 
 function HomePageContent() {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
-      <div className="flex-1 flex flex-col gap-6 overflow-y-auto p-4 md:p-6 lg:p-8">
+      <div className="flex-1 flex flex-col gap-6 overflow-y-auto p-4 md:p-6 lg:p-8 pt-20 lg:pt-8">
         <Header />
         <SongSearch />
         <Separator />
@@ -38,10 +37,6 @@ function HomePageContent() {
 export default function Home() {
   return (
     <KaraokeProvider>
-      <Script
-        src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"
-        strategy="lazyOnload"
-      />
       <AppLayout>
         <HomePageContent />
       </AppLayout>
