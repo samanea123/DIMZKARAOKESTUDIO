@@ -3,11 +3,11 @@
 import Header from "@/components/karaoke/Header";
 import SongQueue from "@/components/karaoke/SongQueue";
 import SongSearch from "@/components/karaoke/SongSearch";
-import TopHits from "@/components/karaoke/TopHits";
 import { KaraokeProvider } from "@/context/KaraokeContext";
 import VideoPlayer from "@/components/karaoke/VideoPlayer";
 import { Separator } from "@/components/ui/separator";
 import MainMenu from "@/components/karaoke/MainMenu";
+import Favorites from "@/components/karaoke/Favorites";
 
 function HomePageContent() {
   return (
@@ -17,7 +17,6 @@ function HomePageContent() {
         <MainMenu />
         <SongSearch />
         <Separator />
-        <TopHits />
         <div className="flex-1 grid grid-cols-1 xl:grid-cols-2 gap-6 min-h-[400px]">
           <div className="flex flex-col">
             <h2 className="text-xl font-headline font-semibold text-primary mb-2">Layar Monitor</h2>
