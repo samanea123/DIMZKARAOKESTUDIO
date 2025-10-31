@@ -7,12 +7,14 @@ import TopHits from "@/components/karaoke/TopHits";
 import { KaraokeProvider } from "@/context/KaraokeContext";
 import VideoPlayer from "@/components/karaoke/VideoPlayer";
 import { Separator } from "@/components/ui/separator";
+import MainMenu from "@/components/karaoke/MainMenu";
 
 function HomePageContent() {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       <div className="flex-1 flex flex-col gap-6 overflow-y-auto">
         <Header />
+        <MainMenu />
         <SongSearch />
         <Separator />
         <TopHits />

@@ -3,7 +3,6 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import Script from "next/script";
 import { FirebaseClientProvider } from '@/firebase/client-provider';
-import Sidebar from '@/components/karaoke/Sidebar';
 
 export const metadata: Metadata = {
   title: 'DIMZ KARAOKE STUDIO',
@@ -26,8 +25,7 @@ export default function RootLayout({
       <body className="font-body antialiased bg-background text-foreground overflow-x-hidden">
         <FirebaseClientProvider>
           <Script src="https://www.youtube.com/iframe_api" strategy="beforeInteractive"></Script>
-          <Sidebar />
-          <main className="md:ml-64 p-4 sm:p-6 min-h-screen">
+          <main className="p-4 sm:p-6 min-h-screen">
             {children}
           </main>
           <Toaster />
