@@ -4,11 +4,15 @@ require('dotenv').config({ path: './.env.local' });
 
 const nextConfig: NextConfig = {
   /* config options here */
+  reactStrictMode: true,
   typescript: {
     ignoreBuildErrors: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  experimental: {
+    esmExternals: false,
   },
   images: {
     remotePatterns: [
